@@ -410,7 +410,8 @@ export async function parseIHcsPdf(file: File): Promise<{ employeeId: string | n
 function normalizeTime(timeStr: string): string {
     if (!timeStr) return timeStr;
     // Extract first time-like token (HH:MM or HH.MM or HH:MM:SS)
-    const m = timeStr.toString().match(/(\d{1,2})[:.](\d{2})(?::\d{2})?/);
+    // Accept colon, dot or comma as separators (e.g. 08:15, 08.15, 08,15)
+    const m = timeStr.toString().match(/(\d{1,2})[:.,](\d{2})(?::\d{2})?/);
     if (m) {
         const hh = m[1].padStart(2, "0");
         const mm = m[2];
