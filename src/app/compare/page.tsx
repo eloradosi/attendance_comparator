@@ -11,6 +11,9 @@ import { ArrowLeft } from "lucide-react";
 export default function ComparePage() {
   const router = useRouter();
   const [data, setData] = useState<CompareResponse | null>(null);
+  const [timesheetRows, setTimesheetRows] = useState<
+    { date: string; checkin?: string | null; checkout?: string | null }[] | null
+  >(null);
 
   useEffect(() => {
     // Retrieve comparison result from sessionStorage
@@ -19,6 +22,15 @@ export default function ComparePage() {
       try {
         // Backend already returns the desired shape; parse and set directly
         setData(JSON.parse(storedData));
+        // Try to load original timesheet rows (saved during upload)
+        const ts = sessionStorage.getItem("originalTimesheet");
+        if (ts) {
+          try {
+            setTimesheetRows(JSON.parse(ts));
+          } catch (err) {
+            console.warn("Failed to parse originalTimesheet", err);
+          }
+        }
       } catch (err) {
         console.error(
           "Failed to parse comparisonResult from sessionStorage",
@@ -117,7 +129,11 @@ export default function ComparePage() {
         </div>
 
         <div className="mb-6">
-          <ExportButtons diffs={data.differences} summary={data.summary} />
+          <ExportButtons
+            diffs={data.differences}
+            summary={data.summary}
+            timesheetRows={timesheetRows || undefined}
+          />
         </div>
 
         <DiffTable diffs={data.differences} />

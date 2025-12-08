@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import FileUpload from "@/components/FileUpload";
+import GoogleAuth from "@/components/GoogleAuth";
 import { ParsedTimesheetRow } from "@/utils/parsePdf";
 
 export default function Home() {
@@ -24,6 +25,23 @@ export default function Home() {
 
     try {
       let data: any;
+
+      // Save timesheet PDF file to sessionStorage for watermarking later
+      if (fileB && fileB.type === "application/pdf") {
+        try {
+          const arrayBuffer = await fileB.arrayBuffer();
+          const base64 = btoa(
+            new Uint8Array(arrayBuffer).reduce(
+              (data, byte) => data + String.fromCharCode(byte),
+              ""
+            )
+          );
+          sessionStorage.setItem("originalTimesheetPdf", base64);
+          sessionStorage.setItem("originalTimesheetFilename", fileB.name);
+        } catch (err) {
+          console.warn("Failed to save original timesheet PDF", err);
+        }
+      }
 
       if ((ihcs && ihcs.length > 0) || (timesheet && timesheet.length > 0)) {
         // Send parsed JSON data (either IHCS / Timesheet or both)
@@ -77,6 +95,19 @@ export default function Home() {
             checkout: sanitizeTime(row.checkout),
           }));
           payload.timesheet = deduped;
+          // Save the deduped timesheet into sessionStorage so compare page
+          // can access the original timesheet for PDF export (client-side)
+          try {
+            sessionStorage.setItem(
+              "originalTimesheet",
+              JSON.stringify(deduped)
+            );
+          } catch (err) {
+            console.warn(
+              "Failed to persist originalTimesheet to sessionStorage",
+              err
+            );
+          }
         }
         if (employeeId) payload.employeeId = employeeId;
         if (employeeName) payload.employeeName = employeeName;
@@ -88,7 +119,15 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          throw new Error(`Upload failed with status ${response.status}`);
+          const errorText = await response.text();
+          console.error("Backend error response:", errorText);
+          throw new Error(
+            `Backend returned ${response.status}. ${
+              response.status === 500
+                ? "Server error - check backend logs or try uploading raw files (uncheck PDF parse option)."
+                : errorText
+            }`
+          );
         }
         data = await response.json();
         console.log("✅ Backend response:", data);
@@ -120,7 +159,11 @@ export default function Home() {
                 reject(new Error("Invalid JSON response"));
               }
             } else {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
+              const errorMsg =
+                xhr.status === 500
+                  ? "Backend server error (500). Check backend logs or try uploading raw files."
+                  : `Upload failed with status ${xhr.status}`;
+              reject(new Error(errorMsg));
             }
           };
 
@@ -145,14 +188,20 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="container mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Attendance Comparator
-          </h1>
-          <p className="text-gray-600">
-            Compare two attendance files and view the differences
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Attendance Comparator
+            </h1>
+            <p className="text-gray-600">
+              Compare two attendance files and view the differences
+            </p>
+          </div>
+          <div className="ml-4">
+            <GoogleAuth />
+          </div>
         </div>
+
         <FileUpload onSubmit={handleSubmit} />
       </div>
     </main>

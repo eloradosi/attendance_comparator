@@ -9,9 +9,18 @@ import { FileSpreadsheet, FileText } from "lucide-react";
 interface ExportButtonsProps {
   diffs: DiffItem[];
   summary?: Summary;
+  timesheetRows?: {
+    date: string;
+    checkin?: string | null;
+    checkout?: string | null;
+  }[];
 }
 
-export default function ExportButtons({ diffs, summary }: ExportButtonsProps) {
+export default function ExportButtons({
+  diffs,
+  summary,
+  timesheetRows,
+}: ExportButtonsProps) {
   const handleExportCsv = () => {
     exportToCsv(diffs, summary);
   };
@@ -22,6 +31,38 @@ export default function ExportButtons({ diffs, summary }: ExportButtonsProps) {
 
   return (
     <div className="flex gap-3 justify-end">
+      {summary && summary.totalDifferences === 0 && timesheetRows && (
+        <Button
+          onClick={async () => {
+            try {
+              const mod = await import("@/utils/exportPdf");
+              if (mod?.exportTimesheetPdfWithWatermark) {
+                await mod.exportTimesheetPdfWithWatermark(
+                  timesheetRows,
+                  summary,
+                  "PASSED"
+                );
+              } else if (mod?.default) {
+                // support default export
+                await mod.default(timesheetRows, summary, "PASSED");
+              } else {
+                alert(
+                  "PDF export module did not export the expected function."
+                );
+              }
+            } catch (err) {
+              console.error("Failed to load PDF exporter:", err);
+              alert(
+                "PDF export is unavailable. To enable it, run: npm install jspdf jspdf-autotable"
+              );
+            }
+          }}
+          variant="outline"
+          className="gap-2"
+        >
+          Download Timesheet PDF (Passed)
+        </Button>
+      )}
       <Button onClick={handleExportCsv} variant="outline" className="gap-2">
         <FileText className="w-4 h-4" />
         Export CSV

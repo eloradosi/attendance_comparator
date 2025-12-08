@@ -340,7 +340,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
           </div>
 
           <div className="flex items-center gap-2 pt-2">
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <Label htmlFor="vendor" className="text-sm">
                 Vendor
               </Label>
@@ -354,7 +354,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
                 <option value="mii">MII</option>
                 <option value="indocyber">Indocyber</option>
               </select>
-            </div>
+            </div> */}
 
             <div className="flex items-center gap-2 pt-2">
               <input
@@ -400,7 +400,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
             </div>
           )}
 
-          {parsedDataA && parsedDataA.length > 0 && (
+          {/* {parsedDataA && parsedDataA.length > 0 && (
             <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="text-sm font-semibold text-green-700">
                 ✅ IHCS PDF Parsed Successfully: {parsedDataA.length} rows
@@ -438,7 +438,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
                 ))}
               </div>
             </div>
-          )}
+          )} */}
 
           <Button
             type="submit"
