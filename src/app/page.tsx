@@ -1,12 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import FileUpload from "@/components/FileUpload";
 import GoogleAuth from "@/components/GoogleAuth";
+import AuthGuard from "@/components/AuthGuard";
 import { ParsedTimesheetRow } from "@/utils/parsePdf";
 
 export default function Home() {
   const router = useRouter();
+
+  // Redirect root to dashboard for a centralized landing page
+  // Keep this client-side to preserve existing AuthGuard behavior
+  useEffect(() => {
+    router.replace("/dashboard");
+  }, [router]);
 
   const handleSubmit = async (
     fileA: File,
@@ -186,24 +194,26 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Attendance Comparator
-            </h1>
-            <p className="text-gray-600">
-              Compare two attendance files and view the differences
-            </p>
+    <AuthGuard>
+      <main className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div className="text-center flex-1">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                Attendance Comparator
+              </h1>
+              <p className="text-gray-600">
+                Compare two attendance files and view the differences
+              </p>
+            </div>
+            <div className="ml-4">
+              <GoogleAuth />
+            </div>
           </div>
-          <div className="ml-4">
-            <GoogleAuth />
-          </div>
-        </div>
 
-        <FileUpload onSubmit={handleSubmit} />
-      </div>
-    </main>
+          <FileUpload onSubmit={handleSubmit} />
+        </div>
+      </main>
+    </AuthGuard>
   );
 }
