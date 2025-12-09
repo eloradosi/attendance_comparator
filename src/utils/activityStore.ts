@@ -1,11 +1,16 @@
-export type ActivityStatus = "busy" | "normal" | "idle";
+export type ActivityStatus = "on_duty" | "off_duty" | "idle"; // on_duty=On duty, off_duty=Off duty, idle=Idle
 
 export type ActivityLog = {
     id: string;
     date: string; // YYYY-MM-DD
-    title: string;
-    detail?: string;
     status: ActivityStatus;
+    // On-duty fields
+    title?: string;
+    detail?: string;
+    percentStart?: number; // 0-100
+    percentEnd?: number; // 0-100
+    // Off-duty reason
+    reason?: string; // sakit|cuti|izin
     createdAt: string;
     updatedAt?: string;
 };
@@ -16,7 +21,14 @@ export function loadActivityLogs(uid: string): ActivityLog[] {
     try {
         const raw = localStorage.getItem(keyFor(uid));
         if (!raw) return [];
-        return JSON.parse(raw) as ActivityLog[];
+        const parsed = JSON.parse(raw) as any[];
+        // Normalize legacy status values ('on'/'off') to new tokens
+        return parsed.map((p) => {
+            const copy: any = { ...p };
+            if (copy.status === "on") copy.status = "on_duty";
+            if (copy.status === "off") copy.status = "off_duty";
+            return copy as ActivityLog;
+        });
     } catch (err) {
         console.error("Failed to load activity logs", err);
         return [];

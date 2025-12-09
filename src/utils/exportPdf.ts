@@ -1,6 +1,6 @@
 export async function exportTimesheetPdfWithWatermark(
     rows: { date: string; checkin?: string | null; checkout?: string | null }[],
-    summary?: { employeeId?: string; employeeName?: string; note?: string },
+    summary?: { employeeId?: string; employeeName?: string; note?: string; uniqueCode?: string },
     watermarkText = "PASSED"
 ) {
     // Load the original PDF from sessionStorage
@@ -27,20 +27,40 @@ export async function exportTimesheetPdfWithWatermark(
         const pdfDoc = await PDFDocument.load(bytes);
         const pages = pdfDoc.getPages();
 
-        // Add watermark to each page
+        // Determine watermark text: prefer backend uniqueCode when available
+        const watermark = (summary && (summary as any).uniqueCode) || watermarkText || "";
+
+        // Embed a standard font so we can measure text width accurately
+        const font = await pdfDoc.embedFont((PDFDocument as any).StandardFonts ? (PDFDocument as any).StandardFonts.Helvetica : undefined).catch(() => null);
+
+        // Add watermark to each page at bottom-right, non-rotated
         for (const page of pages) {
             const { width, height } = page.getSize();
-            const fontSize = 72;
-            const textWidth = watermarkText.length * fontSize * 0.5; // Approximate
+            const fontSize = Math.max(10, Math.min(14, Math.floor(width / 1200 * 12)));
+            const margin = 40;
 
-            // Draw watermark in center, rotated
-            page.drawText(watermarkText, {
-                x: width / 2 - textWidth / 2,
-                y: height / 2,
+            let textWidth = 0;
+            if (font && typeof (font as any).widthOfTextAtSize === "function") {
+                try {
+                    // @ts-ignore - pdf-lib types may not be recognized here
+                    textWidth = (font as any).widthOfTextAtSize(watermark, fontSize);
+                } catch (e) {
+                    textWidth = watermark.length * fontSize * 0.5;
+                }
+            } else {
+                textWidth = watermark.length * fontSize * 0.5;
+            }
+
+            const x = Math.max(margin, width - margin - textWidth);
+            const y = margin; // bottom margin
+
+            page.drawText(watermark, {
+                x,
+                y,
                 size: fontSize,
-                color: rgb(0.8, 0.8, 0.8),
-                opacity: 0.3,
-                rotate: degrees(-30),
+                color: rgb(0.35, 0.35, 0.35),
+                opacity: 0.7,
+                font: font || undefined,
             });
         }
 

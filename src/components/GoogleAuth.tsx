@@ -32,9 +32,15 @@ export default function GoogleAuth({
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
 
+      // After successful sign-in, respect an optional `next` query param
+      // otherwise default to the dashboard so users land there by default.
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next");
-      if (next) router.replace(decodeURIComponent(next));
+      if (next) {
+        router.replace(decodeURIComponent(next));
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err) {
       console.error("Google sign-in failed:", err);
       alert("Google sign-in failed, see console for details.");
@@ -62,17 +68,27 @@ export default function GoogleAuth({
   };
 
   // ----------------------------------------------------
-  // USER NOT LOGGED IN → Show Sign in button
+  // USER NOT LOGGED IN → Show Sign in button (only in full mode)
+  // For `display`/`actions` mode we avoid rendering a nested <button>
+  // because `Navbar` wraps the component inside another button which
+  // produces invalid nested-button markup and duplicated UI.
   // ----------------------------------------------------
   if (!user) {
-    return (
-      <button
-        onClick={handleSignIn}
-        className="inline-flex items-center gap-3 px-4 py-2 rounded-lg bg-white text-gray-700 shadow-sm hover:shadow-md border border-gray-200 transition"
-      >
-        <span className="text-sm font-medium">Sign in with Google</span>
-      </button>
-    );
+    if (mode === "full") {
+      return (
+        <button
+          onClick={handleSignIn}
+          className="inline-flex items-center gap-3 px-4 py-2 rounded-lg bg-white text-gray-700 shadow-sm hover:shadow-md border border-gray-200 transition"
+        >
+          <span className="text-sm font-medium">Sign in with Google</span>
+        </button>
+      );
+    }
+
+    // For display/actions mode when not signed in, render a non-interactive
+    // inline label so the parent (e.g. Navbar) can control interaction/toggle
+    // without causing nested <button> elements.
+    return <span className="text-sm font-medium">Sign in with Google</span>;
   }
 
   // ----------------------------------------------------

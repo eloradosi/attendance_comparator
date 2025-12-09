@@ -120,6 +120,25 @@ export default function ActivityList({ onChange }: Props) {
 
   const handleAdd = (log: ActivityLog) => {
     if (!uid) return;
+    // enforce one activity per day per user
+    const existing = loadActivityLogs(uid).some((x) => x.date === log.date);
+    if (existing) {
+      showToast("You already have an activity for this date", "error");
+      setAdding(false);
+      return;
+    }
+    try {
+      // store a lightweight profile snapshot locally so admin view can show a name
+      const profileKey = `userProfile:${uid}`;
+      const profile = {
+        displayName:
+          auth.currentUser?.displayName || auth.currentUser?.email || uid,
+        email: auth.currentUser?.email || null,
+      };
+      localStorage.setItem(profileKey, JSON.stringify(profile));
+    } catch (err) {
+      // ignore localStorage errors
+    }
     addActivityLog(uid, log);
     setAdding(false);
     refresh();
@@ -132,6 +151,17 @@ export default function ActivityList({ onChange }: Props) {
     if (log.date !== todayISO()) {
       alert("You can only edit logs for today");
       return;
+    }
+    try {
+      const profileKey = `userProfile:${uid}`;
+      const profile = {
+        displayName:
+          auth.currentUser?.displayName || auth.currentUser?.email || uid,
+        email: auth.currentUser?.email || null,
+      };
+      localStorage.setItem(profileKey, JSON.stringify(profile));
+    } catch (err) {
+      // ignore
     }
     updateActivityLog(uid, log);
     setEditingId(null);
@@ -217,22 +247,39 @@ export default function ActivityList({ onChange }: Props) {
                       </div>
                       <div
                         className={`text-sm px-2 py-1 rounded ${
-                          l.status === "busy"
+                          l.status === "on_duty"
+                            ? "bg-amber-100 text-amber-700"
+                            : l.status === "off_duty"
                             ? "bg-red-100 text-red-700"
-                            : l.status === "normal"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-700"
+                            : "bg-green-100 text-green-700"
                         }`}
                       >
-                        {l.status}
+                        {l.status === "on_duty"
+                          ? "On duty"
+                          : l.status === "off_duty"
+                          ? "Off duty"
+                          : "Idle"}
                       </div>
                     </div>
-                    <div className="mt-2 font-medium text-gray-800">
-                      {l.title}
-                    </div>
+                    {l.title && (
+                      <div className="mt-2 font-medium text-gray-800">
+                        {l.title}
+                      </div>
+                    )}
                     {l.detail && (
                       <div className="mt-1 text-sm text-gray-600">
                         {l.detail}
+                      </div>
+                    )}
+                    {l.status === "on_duty" && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Start: {l.percentStart ?? "-"}% · End:{" "}
+                        {l.percentEnd ?? "-"}%
+                      </div>
+                    )}
+                    {l.status === "off_duty" && l.reason && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Reason: {l.reason}
                       </div>
                     )}
                     <div className="mt-2 text-xs text-gray-400">

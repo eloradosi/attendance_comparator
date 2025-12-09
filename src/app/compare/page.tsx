@@ -11,6 +11,7 @@ import FileUpload from "@/components/FileUpload";
 import DashboardLayout from "@/components/DashboardLayout";
 import AuthGuard from "@/components/AuthGuard";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import BackHeader from "@/components/BackHeader";
 
 export default function ComparePage() {
   const router = useRouter();
@@ -197,9 +198,15 @@ export default function ComparePage() {
             <div className="container mx-auto">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="min-w-0">
-                  <h1 className="text-2xl font-semibold">
-                    Attendance Comparator
-                  </h1>
+                  <div>
+                    {/* Back arrow + title */}
+                    {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                    {/* @ts-ignore */}
+                    <BackHeader
+                      title="Attendance Comparator"
+                      href="/dashboard"
+                    />
+                  </div>
                   <div className="mt-2">
                     <Breadcrumbs
                       items={[
@@ -236,16 +243,37 @@ export default function ComparePage() {
               <Breadcrumbs
                 items={[
                   { href: "/dashboard", label: "Dashboard" },
-                  { href: "/compare", label: "Attendance Comparator" },
+                  {
+                    href: "/compare",
+                    label: "Attendance Comparator",
+                    onClick: () => {
+                      // Clear stored comparison so the upload UI is shown again
+                      try {
+                        sessionStorage.removeItem("comparisonResult");
+                        sessionStorage.removeItem("originalTimesheet");
+                        sessionStorage.removeItem("originalTimesheetPdf");
+                      } catch (err) {
+                        // ignore
+                      }
+                      // Reset local component state so the upload UI renders immediately
+                      try {
+                        setData(null);
+                        setTimesheetRows(null);
+                      } catch (e) {
+                        // setData / setTimesheetRows may not be available in some render paths
+                      }
+                      router.push("/compare");
+                    },
+                  },
                   { label: "Results" },
                 ]}
               />
             </div>
 
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Comparison Results
-              </h1>
+              <div className="flex items-center justify-between">
+                <BackHeader title="Comparison Results" href="/compare" />
+              </div>
               {data.summary.employeeName && (
                 <p className="text-sm text-gray-700 mb-1">
                   <span className="font-medium">

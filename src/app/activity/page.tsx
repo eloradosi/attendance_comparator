@@ -4,6 +4,7 @@ import AuthGuard from "@/components/AuthGuard";
 import DashboardLayout from "@/components/DashboardLayout";
 import ActivityList from "@/components/activity/ActivityList";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import BackHeader from "@/components/BackHeader";
 import { auth } from "@/lib/firebaseClient";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -25,7 +26,7 @@ export default function ActivityPage() {
           <div className="container mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold">Activity Log</h1>
+                <BackHeader title="Activity Log" href="/dashboard" />
                 <div className="mt-2">
                   <Breadcrumbs
                     items={[

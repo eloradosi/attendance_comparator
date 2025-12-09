@@ -11,11 +11,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const menuItems = [
-    { label: "Attendance Comparator", href: "/compare" },
-    { label: "Activity Log", href: "/activity" },
-  ];
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: any) => {
@@ -30,7 +25,6 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b shadow-sm">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        
         {/* LEFT SIDE */}
         <div className="flex items-center gap-10">
           <Link
@@ -40,25 +34,7 @@ export default function Navbar() {
             AttendanceApp
           </Link>
 
-          <nav className="hidden md:flex gap-6 text-sm font-medium">
-            {menuItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`relative px-1 py-1 transition ${
-                    active ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  {item.label}
-                  {active && (
-                    <span className="absolute left-0 right-0 -bottom-1 h-[3px] rounded-full bg-blue-600 shadow-sm"></span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* center nav removed per user preference */}
         </div>
 
         {/* RIGHT SIDE — USER DROPDOWN */}

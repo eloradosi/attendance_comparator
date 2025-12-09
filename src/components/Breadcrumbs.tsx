@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
-type Crumb = { href?: string; label: string };
+type Crumb = { href?: string; label: string; onClick?: () => void };
 
 export default function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
@@ -14,9 +14,22 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           return (
             <li key={idx} className="flex items-center">
               {!isLast && it.href ? (
-                <Link href={it.href} className="hover:underline text-gray-600">
-                  {it.label}
-                </Link>
+                it.onClick ? (
+                  <button
+                    type="button"
+                    onClick={it.onClick}
+                    className="hover:underline text-gray-600 bg-transparent p-0 m-0"
+                  >
+                    {it.label}
+                  </button>
+                ) : (
+                  <Link
+                    href={it.href}
+                    className="hover:underline text-gray-600"
+                  >
+                    {it.label}
+                  </Link>
+                )
               ) : (
                 <span
                   className={
