@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
+import { getAppToken } from "@/lib/api";
 import { ActivityLog } from "@/utils/activityStore";
 import {
   deleteActivityLog,
@@ -109,64 +111,186 @@ export default function ActivityList({ onChange }: Props) {
 
   useEffect(() => {
     if (!uid) return;
-    setLogs(loadActivityLogs(uid));
+
+    let isMounted = true;
+    const source = axios.CancelToken.source();
+
+    (async () => {
+      try {
+        const backend = process.env.NEXT_PUBLIC_API_URL || "";
+        const url = backend
+          ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=0&size=100`
+          : `/api/logbook/my?page=0&size=100`;
+
+        const token = getAppToken();
+        const resp = await axios.get(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cancelToken: source.token,
+        });
+
+        if (isMounted) {
+          const items = (resp.data.data || []) as any[];
+          const mapped: ActivityLog[] = items.map((it) => ({
+            id: it.id,
+            date: it.date,
+            status: it.status,
+            title: it.title,
+            detail: it.detail,
+            percentStart: it.percentStart,
+            percentEnd: it.percentEnd,
+            reason: it.reason,
+            createdAt: it.createdAt,
+            updatedAt: it.updatedAt,
+          }));
+          setLogs(mapped);
+        }
+      } catch (err: any) {
+        if (axios.isCancel(err)) {
+          return;
+        }
+        if (isMounted) {
+          console.error("Failed to load activity logs from backend", err);
+          setLogs([]);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      source.cancel();
+    };
   }, [uid]);
 
   const refresh = () => {
     if (!uid) return;
-    setLogs(loadActivityLogs(uid));
-    onChange?.();
+    (async () => {
+      try {
+        const backend = process.env.NEXT_PUBLIC_API_URL || "";
+        const url = backend
+          ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=0&size=100`
+          : `/api/logbook/my?page=0&size=100`;
+
+        const token = getAppToken();
+        const resp = await axios.get(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        const items = (resp.data.data || []) as any[];
+        const mapped: ActivityLog[] = items.map((it) => ({
+          id: it.id,
+          date: it.date,
+          status: it.status,
+          title: it.title,
+          detail: it.detail,
+          percentStart: it.percentStart,
+          percentEnd: it.percentEnd,
+          reason: it.reason,
+          createdAt: it.createdAt,
+          updatedAt: it.updatedAt,
+        }));
+        setLogs(mapped);
+        onChange?.();
+      } catch (err) {
+        console.error("Failed to refresh from backend", err);
+        setLogs([]);
+        onChange?.();
+      }
+    })();
   };
 
-  const handleAdd = (log: ActivityLog) => {
+  const handleAdd = async (log: ActivityLog) => {
     if (!uid) return;
-    // enforce one activity per day per user
-    const existing = loadActivityLogs(uid).some((x) => x.date === log.date);
-    if (existing) {
-      showToast("You already have an activity for this date", "error");
+
+    // Build payload based on status
+    const payload: any = {
+      date: log.date,
+      status: log.status,
+    };
+
+    if (log.status === "on_duty") {
+      payload.title = log.title;
+      payload.detail = log.detail;
+      payload.percentStart = log.percentStart;
+      payload.percentEnd = log.percentEnd;
+    } else if (log.status === "off_duty") {
+      payload.reason = log.reason;
+    }
+    // idle status only needs date and status
+
+    try {
+      const backend = process.env.NEXT_PUBLIC_API_URL || "";
+      const url = backend
+        ? `${backend.replace(/\/$/, "")}/api/logbook/save`
+        : `/api/logbook/save`;
+
+      const token = getAppToken();
+      await axios.post(url, payload, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
       setAdding(false);
+      refresh();
+      showToast("Activity added", "success");
       return;
+    } catch (err: any) {
+      console.error("Error adding activity:", err);
+      showToast(
+        err.response?.data?.message || "Failed to add activity",
+        "error"
+      );
+      setAdding(false);
     }
-    try {
-      // store a lightweight profile snapshot locally so admin view can show a name
-      const profileKey = `userProfile:${uid}`;
-      const profile = {
-        displayName:
-          auth.currentUser?.displayName || auth.currentUser?.email || uid,
-        email: auth.currentUser?.email || null,
-      };
-      localStorage.setItem(profileKey, JSON.stringify(profile));
-    } catch (err) {
-      // ignore localStorage errors
-    }
-    addActivityLog(uid, log);
-    setAdding(false);
-    refresh();
-    showToast("Activity added", "success");
   };
 
-  const handleSave = (log: ActivityLog) => {
+  const handleSave = async (log: ActivityLog) => {
     if (!uid) return;
-    // only allow updating today's logs
-    if (log.date !== todayISO()) {
-      alert("You can only edit logs for today");
-      return;
+
+    // Build payload based on status (include id for edit)
+    const payload: any = {
+      id: log.id,
+      date: log.date,
+      status: log.status,
+    };
+
+    if (log.status === "on_duty") {
+      payload.title = log.title;
+      payload.detail = log.detail;
+      payload.percentStart = log.percentStart;
+      payload.percentEnd = log.percentEnd;
+    } else if (log.status === "off_duty") {
+      payload.reason = log.reason;
     }
+    // idle status only needs id, date and status
+
     try {
-      const profileKey = `userProfile:${uid}`;
-      const profile = {
-        displayName:
-          auth.currentUser?.displayName || auth.currentUser?.email || uid,
-        email: auth.currentUser?.email || null,
-      };
-      localStorage.setItem(profileKey, JSON.stringify(profile));
-    } catch (err) {
-      // ignore
+      const backend = process.env.NEXT_PUBLIC_API_URL || "";
+      const url = backend
+        ? `${backend.replace(/\/$/, "")}/api/logbook/save`
+        : `/api/logbook/save`;
+
+      const token = getAppToken();
+      await axios.post(url, payload, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      setEditingId(null);
+      refresh();
+      showToast("Activity updated", "success");
+      return;
+    } catch (err: any) {
+      console.error("Error updating activity:", err);
+      showToast(
+        err.response?.data?.message || "Failed to update activity",
+        "error"
+      );
+      setEditingId(null);
     }
-    updateActivityLog(uid, log);
-    setEditingId(null);
-    refresh();
-    showToast("Activity updated", "success");
   };
 
   const handleDelete = (id: string) => {

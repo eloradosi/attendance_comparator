@@ -7,6 +7,7 @@ import ExportButtons from "@/components/ExportButtons";
 import { CompareResponse } from "@/utils/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import apiFetch from "@/lib/api";
 import FileUpload from "@/components/FileUpload";
 import DashboardLayout from "@/components/DashboardLayout";
 import AuthGuard from "@/components/AuthGuard";
@@ -127,9 +128,8 @@ export default function ComparePage() {
         if (employeeId) payload.employeeId = employeeId;
         if (employeeName) payload.employeeName = employeeName;
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 

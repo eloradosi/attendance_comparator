@@ -6,12 +6,14 @@ import { auth } from "@/lib/firebaseClient";
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
 import { showToast } from "@/components/Toast";
+import apiFetch, { setAppToken, clearAppToken } from "@/lib/api";
 
 export default function GoogleAuth({
   mode = "full",
@@ -27,10 +29,47 @@ export default function GoogleAuth({
   }, []);
 
   const handleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
+      // Try popup first (preferred UX). In some environments (incognito,
+      // strict cookie settings, or popup blockers) this will fail — catch
+      // the error and fallback to redirect-based sign-in which works more
+      // reliably across environments.
+      const cred = await signInWithPopup(auth, provider);
+
+      // Obtain a Firebase ID token (JWT) that we'll send to our backend
+      // so the backend can verify the user identity and return an app
+      // session token (or user profile). Backend expects JSON { idToken }.
+      const idToken = await getIdToken(false);
+
+      try {
+        const backend =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        const resp = await apiFetch(
+          `${backend.replace(/\/$/, "")}/api/auth/login`,
+          {
+            method: "POST",
+            body: JSON.stringify({ idToken }),
+          }
+        );
+
+        if (!resp.ok) {
+          console.warn("Backend login failed:", resp.status, await resp.text());
+          showToast("Backend login failed", "error");
+        } else {
+          const data = await resp.json();
+          // Store token in sessionStorage (persists on reload, cleared when tab closes)
+          if (data?.token) {
+            setAppToken(data.token);
+          }
+          showToast("Signed in", "success");
+        }
+      } catch (backendErr) {
+        console.error("Error calling backend login:", backendErr);
+        showToast("Backend login error", "error");
+      }
 
       // After successful sign-in, respect an optional `next` query param
       // otherwise default to the dashboard so users land there by default.
@@ -41,7 +80,36 @@ export default function GoogleAuth({
       } else {
         router.replace("/dashboard");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.warn(
+        "Google sign-in (popup) failed:",
+        err?.code || err?.message || err
+      );
+
+      // Known error codes that suggest popup was blocked or unsupported:
+      // - auth/popup-blocked
+      // - auth/operation-not-supported-in-this-environment
+      // - auth/unauthorized-domain
+      const code = err?.code || "";
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        try {
+          // Inform the user that we'll fall back to a redirect
+          showToast("Popup blocked — falling back to redirect sign-in", "info");
+          await signInWithRedirect(auth, provider);
+        } catch (rErr) {
+          console.error("Redirect sign-in also failed:", rErr);
+          alert(
+            "Google sign-in failed. Please disable popup blockers or try another browser."
+          );
+        }
+        return;
+      }
+
+      // Fallback for other errors: show console and a friendly message
       console.error("Google sign-in failed:", err);
       alert("Google sign-in failed, see console for details.");
     }
@@ -50,6 +118,11 @@ export default function GoogleAuth({
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      clearAppToken();
+      // Redirect to dashboard after sign out
+      router.push("/dashboard");
+      // TODO: Call backend logout endpoint if needed
+      // await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch (err) {
       console.error("Sign-out failed:", err);
     }

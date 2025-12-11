@@ -7,15 +7,20 @@ import {
   ChevronsLeft,
   ChevronsRight,
   RotateCcw,
+  Trash,
 } from "lucide-react";
 import Dropdown from "@/components/ui/dropdown";
 import DashboardLayout from "@/components/DashboardLayout";
 import AuthGuard from "@/components/AuthGuard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
+import axios from "axios";
+import { getAppToken } from "@/lib/api";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
 
 type ActivityRow = {
-  uid: string;
+  uid?: string;
   id: string;
   date: string;
   status: string;
@@ -26,6 +31,8 @@ type ActivityRow = {
   reason?: string;
   createdAt: string;
   updatedAt?: string;
+  userName?: string;
+  userEmail?: string;
 };
 
 export default function AllActivitiesPage() {
@@ -42,11 +49,31 @@ export default function AllActivitiesPage() {
     return `${yyyy}-${mm}-${dd}`;
   })();
 
+  // Calculate date range: 3 days before today
+  const getDateRange = () => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 2); // 2 days before = 3 days range (today + 2 days before)
+
+    const formatDate = (d: Date) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    };
+  };
+
   const [statusFilter, setStatusFilter] = useState<
     "all" | ActivityRow["status"]
   >("all");
   const [userFilter, setUserFilter] = useState<string>("all");
-  // date filters disabled for now
+  const [todayOnly, setTodayOnly] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   // dropdown state refs
   const statusRef = useRef<HTMLDivElement | null>(null);
   const userRef = useRef<HTMLDivElement | null>(null);
@@ -60,20 +87,10 @@ export default function AllActivitiesPage() {
   const users = useMemo(() => {
     const map = new Map<string, string>();
     rows.forEach((r) => {
-      const profileRaw =
-        typeof window !== "undefined"
-          ? localStorage.getItem(`userProfile:${r.uid}`)
-          : null;
-      let display = r.uid;
-      if (profileRaw) {
-        try {
-          const pr = JSON.parse(profileRaw);
-          display = pr.displayName || pr.email || r.uid;
-        } catch (e) {
-          // ignore
-        }
-      }
-      map.set(r.uid, display);
+      // Use userName from backend response if available, otherwise fallback to uid
+      const display = r.userName || r.userEmail || r.uid || "Unknown";
+      const key = r.userEmail || r.uid || r.id;
+      map.set(key, display);
     });
     return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
   }, [rows]);
@@ -82,13 +99,18 @@ export default function AllActivitiesPage() {
     if (!rows || rows.length === 0) return [];
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (userFilter !== "all" && r.uid !== userFilter) return false;
+      const userKey = r.userEmail || r.uid || r.id;
+      if (userFilter !== "all" && userKey !== userFilter) return false;
+      if (todayOnly && r.date !== today) return false;
       return true;
     });
-  }, [rows, statusFilter, userFilter]);
+  }, [rows, statusFilter, userFilter, todayOnly, today]);
 
   // Reset page when filters change
-  useEffect(() => setPage(1), [statusFilter, userFilter, pageSize]);
+  useEffect(
+    () => setPage(1),
+    [statusFilter, userFilter, pageSize, dateRange, todayOnly]
+  );
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const pagedRows = useMemo(() => {
@@ -98,56 +120,91 @@ export default function AllActivitiesPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const keys = Object.keys(localStorage).filter((k) =>
-      k.startsWith("activityLogs:")
-    );
-    const all: ActivityRow[] = [];
-    keys.forEach((k) => {
+
+    const source = axios.CancelToken.source();
+
+    const fetchData = async () => {
       try {
-        const raw = localStorage.getItem(k);
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as any[];
-        const uid = k.replace(/^activityLogs:/, "");
-        // try to read a user profile mapping saved when the activity was created
-        const profileRaw = localStorage.getItem(`userProfile:${uid}`);
-        let displayName: string | null = null;
-        try {
-          if (profileRaw) {
-            const pr = JSON.parse(profileRaw);
-            displayName = pr.displayName || pr.email || null;
-          }
-        } catch (e) {
-          // ignore
+        const backend = process.env.NEXT_PUBLIC_API_URL || "";
+
+        // Build query params
+        const params = new URLSearchParams();
+        params.append("sortBy", "date");
+        params.append("sortDir", "desc");
+
+        if (dateRange?.from) {
+          const start = dateRange.from;
+          const formattedStart = `${start.getFullYear()}-${String(
+            start.getMonth() + 1
+          ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+          params.append("startDate", formattedStart);
         }
-        parsed.forEach((p) => {
-          let dateIso = "";
-          if (p.date) {
-            try {
-              dateIso = new Date(p.date).toISOString().slice(0, 10);
-            } catch (e) {
-              dateIso = String(p.date);
-            }
-          } else if (p.createdAt) {
-            dateIso = new Date(p.createdAt).toISOString().slice(0, 10);
-          }
-          all.push({
-            uid,
-            ...p,
-            date: dateIso,
-            ...(displayName ? { title: p.title, detail: p.detail } : {}),
-          });
+
+        if (dateRange?.to) {
+          const end = dateRange.to;
+          const formattedEnd = `${end.getFullYear()}-${String(
+            end.getMonth() + 1
+          ).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+          params.append("endDate", formattedEnd);
+        }
+
+        const url = backend
+          ? `${backend.replace(
+              /\/$/,
+              ""
+            )}/api/dashboard/logbooklist?${params.toString()}`
+          : `/api/dashboard/logbooklist?${params.toString()}`;
+
+        const token = getAppToken();
+        const resp = await axios.get(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cancelToken: source.token,
         });
-      } catch (err) {
-        console.warn("Failed to parse activity logs for", k, err);
+
+        const items = (resp.data.data || []) as any[];
+        const mapped: ActivityRow[] = items.map((it) => ({
+          id: it.id,
+          date: it.date,
+          status: it.status,
+          title: it.title,
+          detail: it.detail,
+          percentStart: it.percentStart,
+          percentEnd: it.percentEnd,
+          reason: it.reason,
+          createdAt: it.createdAt,
+          updatedAt: it.updatedAt,
+          userName: it.userName,
+          userEmail: it.userEmail,
+        }));
+        setRows(mapped);
+        return;
+      } catch (err: any) {
+        if (axios.isCancel(err)) {
+          return;
+        }
+        console.error("Error fetching dashboard logbook list:", err);
+        // Show empty if backend fails
+        setRows([]);
       }
-    });
-    // sort by createdAt desc
-    all.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    setRows(all);
-  }, []);
+    };
+
+    fetchData();
+
+    return () => {
+      source.cancel();
+    };
+  }, [dateRange]);
+
+  // Clear all filters helper
+  const handleClearFilters = () => {
+    setStatusFilter("all");
+    setUserFilter("all");
+    setTodayOnly(false);
+    setDateRange(undefined);
+    setPage(1);
+    setStatusOpen(false);
+    setUserOpen(false);
+  };
 
   return (
     <AuthGuard>
@@ -167,9 +224,9 @@ export default function AllActivitiesPage() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-sm text-gray-600 mb-4">
-              This view aggregates activity logs found in localStorage (keys
-              starting with <code>activityLogs:</code>). In production, use a
-              server-backed store to see logs from all users.
+              Dashboard view showing activity logs for the last 3 days
+              (including today), sorted by date descending. Data is fetched from
+              the backend API.
             </p>
             {/* Filters */}
             <div className="mb-4 flex flex-col md:flex-row md:items-end gap-3">
@@ -225,9 +282,50 @@ export default function AllActivitiesPage() {
                 />
               </div>
 
-              {/* Date filter removed per request */}
+              {/* Date Range Filter */}
+              <div>
+                <label className="text-sm text-gray-600">Date Range</label>
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  className="w-80"
+                />
+              </div>
 
               <div />
+
+              {/* Quick shortcuts */}
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setStatusFilter("idle");
+                    setUserFilter("all");
+                    setTodayOnly(true);
+                    setPage(1);
+                    // open dropdowns closed for clarity
+                    setStatusOpen(false);
+                    setUserOpen(false);
+                  }}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 transition"
+                >
+                  Idle Today
+                </button>
+
+                {(statusFilter !== "all" ||
+                  userFilter !== "all" ||
+                  todayOnly ||
+                  dateRange) && (
+                  <button
+                    onClick={handleClearFilters}
+                    title="Clear filters"
+                    aria-label="Clear filters"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md border hover:bg-gray-50"
+                  >
+                    <Trash className="w-4 h-4 text-red-600" />
+                    <span className="text-sm">Clear Filters</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {filteredRows.length === 0 ? (
@@ -250,15 +348,9 @@ export default function AllActivitiesPage() {
                     </thead>
                     <tbody>
                       {pagedRows.map((r) => (
-                        <tr key={`${r.uid}:${r.id}`} className="odd:bg-gray-50">
+                        <tr key={r.id} className="odd:bg-gray-50">
                           <td className="py-2 px-3 align-top text-sm text-gray-700">
-                            {(localStorage.getItem(`userProfile:${r.uid}`) &&
-                              JSON.parse(
-                                localStorage.getItem(
-                                  `userProfile:${r.uid}`
-                                ) as string
-                              ).displayName) ||
-                              r.uid}
+                            {r.userName || r.userEmail || "Unknown"}
                           </td>
                           <td className="py-2 px-3 align-top text-sm text-gray-700">
                             {r.date}
@@ -284,12 +376,11 @@ export default function AllActivitiesPage() {
                             {r.status === "off_duty" ? r.reason : r.title}
                           </td>
                           <td className="py-2 px-3 align-top text-sm text-gray-700">
-                            {r.detail ??
-                              (r.status === "on"
-                                ? `${r.percentStart ?? "-"}% → ${
-                                    r.percentEnd ?? "-"
-                                  }%`
-                                : "-")}
+                            {r.status === "on_duty"
+                              ? `${r.percentStart ?? "-"}% → ${
+                                  r.percentEnd ?? "-"
+                                }%`
+                              : r.detail || "-"}
                           </td>
                           <td className="py-2 px-3 align-top text-xs text-gray-500">
                             {new Date(r.createdAt).toLocaleString()}

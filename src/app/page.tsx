@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import apiFetch from "@/lib/api";
+import { auth } from "@/lib/firebaseClient";
 import FileUpload from "@/components/FileUpload";
 import GoogleAuth from "@/components/GoogleAuth";
 import AuthGuard from "@/components/AuthGuard";
@@ -10,10 +13,17 @@ import { ParsedTimesheetRow } from "@/utils/parsePdf";
 export default function Home() {
   const router = useRouter();
 
-  // Redirect root to dashboard for a centralized landing page
-  // Keep this client-side to preserve existing AuthGuard behavior
+  // Redirect root based on auth state: send signed-in users to /dashboard,
+  // otherwise send to `/login` so sign-in is the first landing page.
   useEffect(() => {
-    router.replace("/dashboard");
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    });
+    return () => unsub();
   }, [router]);
 
   const handleSubmit = async (
@@ -120,9 +130,8 @@ export default function Home() {
         if (employeeId) payload.employeeId = employeeId;
         if (employeeName) payload.employeeName = employeeName;
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
