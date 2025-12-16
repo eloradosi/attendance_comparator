@@ -110,7 +110,7 @@ export default function DiffTable({ diffs }: DiffTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+      <div className="rounded-lg border bg-white shadow-smooth overflow-hidden">
         <Table>
           <TableHeader>
             {/* MAIN HEADER */}

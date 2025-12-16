@@ -32,7 +32,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
   const [progress, setProgress] = useState(0);
   const [dragA, setDragA] = useState(false);
   const [dragB, setDragB] = useState(false);
-  const [parsePdfEnabled, setParsePdfEnabled] = useState(true);
   const [vendor, setVendor] = useState<string>("auto");
   const [isParsing, setIsParsing] = useState(false);
   const [parsedDataA, setParsedDataA] = useState<ParsedTimesheetRow[] | null>(
@@ -51,21 +50,14 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
       setParsedDataA(null);
 
       if (f.name.toLowerCase().endsWith(".pdf")) {
-        if (parsePdfEnabled) {
-          // parse in background
-          parsePdfFile(f, "A");
-        } else {
-          console.log(
-            "ℹ️ PDF file selected for A but parsing is disabled. Enable to parse."
-          );
-        }
+        // parse in background
+        parsePdfFile(f, "A");
       }
     }
   };
 
   const parsePdfFile = async (file: File, which: "A" | "B") => {
     console.log("🔍 Starting PDF parsing for:", file.name, which);
-    console.log("   parsePdfEnabled:", parsePdfEnabled);
     setIsParsing(true);
     // Helper to sanitize parsed times into HH:MM for preview
     const sanitizeTimeForPreview = (t: string | null) => {
@@ -155,15 +147,9 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
       setFileB(file);
       setParsedDataB(null);
 
-      // Auto-parse if enabled and file is PDF
+      // Auto-parse if file is PDF
       if (file.name.toLowerCase().endsWith(".pdf")) {
-        if (parsePdfEnabled) {
-          await parsePdfFile(file, "B");
-        } else {
-          console.log(
-            "ℹ️ PDF file selected but parsing is disabled. Check the checkbox to enable parsing."
-          );
-        }
+        await parsePdfFile(file, "B");
       } else {
         console.log("ℹ️ Non-PDF file selected:", file.name);
       }
@@ -183,13 +169,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         setFileA(f);
         setParsedDataA(null);
         if (f.name.toLowerCase().endsWith(".pdf")) {
-          if (parsePdfEnabled) {
-            await parsePdfFile(f, "A");
-          } else {
-            console.log(
-              "ℹ️ PDF file dropped for A but parsing is disabled. Check the checkbox to enable parsing."
-            );
-          }
+          await parsePdfFile(f, "A");
         } else {
           console.log("ℹ️ Non-PDF file dropped for A:", f.name);
         }
@@ -198,15 +178,9 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         setFileB(file);
         setParsedDataB(null);
 
-        // Auto-parse if enabled and file is PDF
+        // Auto-parse if file is PDF
         if (file.name.toLowerCase().endsWith(".pdf")) {
-          if (parsePdfEnabled) {
-            await parsePdfFile(file, "B");
-          } else {
-            console.log(
-              "ℹ️ PDF file dropped but parsing is disabled. Check the checkbox to enable parsing."
-            );
-          }
+          await parsePdfFile(file, "B");
         } else {
           console.log("ℹ️ Non-PDF file dropped:", file.name);
         }
@@ -339,8 +313,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
-            {/* <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
               <Label htmlFor="vendor" className="text-sm">
                 Vendor
               </Label>
@@ -355,44 +328,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
                 <option value="indocyber">Indocyber</option>
               </select>
             </div> */}
-
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="parsePdf"
-                checked={parsePdfEnabled}
-                onChange={async (e) => {
-                  const isEnabled = e.target.checked;
-                  console.log(
-                    "📌 PDF parsing toggle:",
-                    isEnabled ? "ENABLED" : "DISABLED"
-                  );
-                  setParsePdfEnabled(isEnabled);
-
-                  // If enabled and PDF files are already selected, parse them immediately
-                  if (isEnabled) {
-                    console.log(
-                      "🔄 Re-parsing existing PDF files if present..."
-                    );
-                    if (fileA && fileA.name.toLowerCase().endsWith(".pdf")) {
-                      await parsePdfFile(fileA, "A");
-                    }
-                    if (fileB && fileB.name.toLowerCase().endsWith(".pdf")) {
-                      await parsePdfFile(fileB, "B");
-                    }
-                  } else {
-                    console.log("🗑️ Clearing parsed data");
-                    setParsedDataA(null);
-                    setParsedDataB(null);
-                  }
-                }}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="parsePdf" className="text-sm cursor-pointer">
-                Parse PDF timesheet on frontend (extract text data)
-              </Label>
-            </div>
-          </div>
 
           {isParsing && (
             <div className="text-sm text-blue-600 font-semibold animate-pulse">

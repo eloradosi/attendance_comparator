@@ -38,6 +38,14 @@ type ActivityRow = {
 export default function AllActivitiesPage() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
 
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent("app:navigated"));
+    } catch (e) {
+      // ignore on server
+    }
+  }, []);
+
   // (date normalization removed — we will parse dates minimally when loading rows)
 
   // Filters
@@ -229,7 +237,7 @@ export default function AllActivitiesPage() {
               the backend API.
             </p>
             {/* Filters */}
-            <div className="mb-4 flex flex-col md:flex-row md:items-end gap-3">
+            <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap md:items-end gap-3">
               <div ref={statusRef}>
                 <label className="text-sm text-gray-600">Status</label>
                 <Dropdown
@@ -295,7 +303,7 @@ export default function AllActivitiesPage() {
               <div />
 
               {/* Quick shortcuts */}
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto flex-wrap">
                 <button
                   onClick={() => {
                     setStatusFilter("idle");
@@ -306,7 +314,7 @@ export default function AllActivitiesPage() {
                     setStatusOpen(false);
                     setUserOpen(false);
                   }}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 transition"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 transition text-sm"
                 >
                   Idle Today
                 </button>
@@ -334,66 +342,78 @@ export default function AllActivitiesPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="text-sm text-gray-600 border-b">
-                        <th className="py-2 px-3">User</th>
-                        <th className="py-2 px-3">Date</th>
-                        <th className="py-2 px-3">Status</th>
-                        <th className="py-2 px-3">Title / Reason</th>
-                        <th className="py-2 px-3">Details</th>
-                        <th className="py-2 px-3">Created</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedRows.map((r) => (
-                        <tr key={r.id} className="odd:bg-gray-50">
-                          <td className="py-2 px-3 align-top text-sm text-gray-700">
-                            {r.userName || r.userEmail || "Unknown"}
-                          </td>
-                          <td className="py-2 px-3 align-top text-sm text-gray-700">
-                            {r.date}
-                          </td>
-                          <td className="py-2 px-3 align-top text-sm">
-                            <span
-                              className={`px-2 py-1 rounded text-xs ${
-                                r.status === "on_duty"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : r.status === "off_duty"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-green-100 text-green-700"
-                              }`}
-                            >
-                              {r.status === "on_duty"
-                                ? "On duty"
-                                : r.status === "off_duty"
-                                ? "Off duty"
-                                : "Idle"}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 align-top text-sm text-gray-800">
-                            {r.status === "off_duty" ? r.reason : r.title}
-                          </td>
-                          <td className="py-2 px-3 align-top text-sm text-gray-700">
-                            {r.status === "on_duty"
-                              ? `${r.percentStart ?? "-"}% → ${
-                                  r.percentEnd ?? "-"
-                                }%`
-                              : r.detail || "-"}
-                          </td>
-                          <td className="py-2 px-3 align-top text-xs text-gray-500">
-                            {new Date(r.createdAt).toLocaleString()}
-                          </td>
+                <div className="overflow-x-auto -mx-6 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="min-w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-sm text-gray-600 border-b">
+                          <th className="py-2 px-3 whitespace-nowrap">User</th>
+                          <th className="py-2 px-3 whitespace-nowrap">Date</th>
+                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3">Title / Reason</th>
+                          <th className="py-2 px-3">Details</th>
+                          <th className="py-2 px-3">Created</th>
+                          <th className="py-2 px-3">Updated</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {pagedRows.map((r) => (
+                          <tr key={r.id} className="odd:bg-gray-50">
+                            <td className="py-2 px-3 align-top text-sm text-gray-700">
+                              {r.userName || r.userEmail || "Unknown"}
+                            </td>
+                            <td className="py-2 px-3 align-top text-sm text-gray-700">
+                              {r.date}
+                            </td>
+                            <td className="py-2 px-3 align-top text-sm">
+                              <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                  r.status === "on_duty"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : r.status === "off_duty"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-green-100 text-green-700"
+                                }`}
+                              >
+                                {r.status === "on_duty"
+                                  ? "On duty"
+                                  : r.status === "off_duty"
+                                  ? "Off duty"
+                                  : "Idle"}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 align-top text-sm text-gray-800">
+                              {r.status === "off_duty" || r.status === "idle"
+                                ? r.reason || "-"
+                                : r.title || "-"}
+                            </td>
+                            <td className="py-2 px-3 align-top text-sm text-gray-700">
+                              {r.status === "on_duty"
+                                ? `${r.percentStart ?? "-"}% → ${
+                                    r.percentEnd ?? "-"
+                                  }%`
+                                : r.detail || "-"}
+                            </td>
+                            <td className="py-2 px-3 align-top text-xs text-gray-500">
+                              {r.createdAt
+                                ? new Date(r.createdAt).toLocaleString()
+                                : "-"}
+                            </td>
+                            <td className="py-2 px-3 align-top text-xs text-gray-500">
+                              {r.updatedAt
+                                ? new Date(r.updatedAt).toLocaleString()
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Pagination controls */}
                 <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
                     <div className="text-sm text-gray-600">
                       Showing{" "}
                       {filteredRows.length === 0
@@ -466,7 +486,7 @@ export default function AllActivitiesPage() {
                             aria-current={p === page ? "page" : undefined}
                             className={`px-3 py-1 rounded border ${
                               p === page
-                                ? "bg-blue-600 text-white border-blue-600"
+                                ? "bg-green-600 text-white border-green-600"
                                 : "hover:bg-gray-50"
                             }`}
                           >

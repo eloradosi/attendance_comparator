@@ -22,6 +22,10 @@ export default function Dropdown({
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(
+    typeof window !== "undefined" &&
+      sessionStorage.getItem("isDarkMode") === "true"
+  );
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -42,6 +46,13 @@ export default function Dropdown({
     }
   }, [open, options, value]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIsDarkMode(sessionStorage.getItem("isDarkMode") === "true");
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div ref={ref} className={`relative ${width}`}>
       <button
@@ -55,13 +66,19 @@ export default function Dropdown({
             setOpen(true);
           }
         }}
-        className="mt-1 w-full border rounded px-3 py-2 flex items-center justify-between text-sm"
+        className={`mt-1 w-full rounded px-3 py-2 flex items-center justify-between text-sm border transition ${
+          isDarkMode
+            ? "bg-white/5 border-white/20 text-white"
+            : "bg-white border-gray-300 text-gray-900"
+        }`}
       >
         <span className="truncate">
           {options.find((o) => o.value === value)?.label ?? placeholder}
         </span>
         <svg
-          className="w-4 h-4 text-gray-500"
+          className={`w-4 h-4 ${
+            isDarkMode ? "text-gray-300" : "text-gray-500"
+          }`}
           viewBox="0 0 20 20"
           fill="currentColor"
           aria-hidden
@@ -78,7 +95,11 @@ export default function Dropdown({
         <ul
           role="listbox"
           tabIndex={-1}
-          className="absolute mt-1 left-0 right-0 bg-white border rounded shadow z-50 max-h-60 overflow-auto"
+          className={`absolute mt-1 left-0 right-0 rounded shadow z-50 max-h-60 overflow-auto ${
+            isDarkMode
+              ? "bg-teal-900 border border-teal-700/30"
+              : "bg-white border"
+          }`}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
@@ -109,9 +130,17 @@ export default function Dropdown({
               role="option"
               aria-selected={opt.value === value}
               className={`px-3 py-2 cursor-pointer ${
-                i === highlight ? "bg-gray-100" : "hover:bg-gray-50"
+                i === highlight
+                  ? isDarkMode
+                    ? "bg-white/5"
+                    : "bg-gray-100"
+                  : isDarkMode
+                  ? "hover:bg-white/5"
+                  : "hover:bg-gray-50"
               } ${
-                opt.value === value ? "font-medium" : "text-sm text-gray-700"
+                opt.value === value
+                  ? "font-medium"
+                  : `text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`
               }`}
               onMouseEnter={() => setHighlight(i)}
               onClick={() => {

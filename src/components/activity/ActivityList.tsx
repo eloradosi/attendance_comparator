@@ -4,20 +4,15 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { getAppToken } from "@/lib/api";
 import { ActivityLog } from "@/utils/activityStore";
-import {
-  deleteActivityLog,
-  loadActivityLogs,
-  updateActivityLog,
-  addActivityLog,
-} from "@/utils/activityStore";
+import { deleteActivityLog } from "@/utils/activityStore";
 import { showToast } from "@/components/Toast";
 import ActivityForm from "@/components/activity/ActivityForm";
 import Modal from "@/components/Modal";
 import { auth } from "@/lib/firebaseClient";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit } from "lucide-react";
 
 type Props = {
-  onChange?: () => void;
+  onActivityAdded?: () => void; // ✅ NEW: trigger parent (hide warning)
 };
 
 function todayISO() {
@@ -26,28 +21,6 @@ function todayISO() {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatTopDatetime(dateInput: string | number | Date) {
-  const d =
-    typeof dateInput === "string" || typeof dateInput === "number"
-      ? new Date(dateInput)
-      : dateInput;
-  // Date in Indonesian long month + time in Asia/Jakarta (WIB)
-  const datePart = new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  }).format(d);
-  const timePart = new Intl.DateTimeFormat("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Jakarta",
-  }).format(d);
-  return `${datePart} | ${timePart} WIB`;
 }
 
 function formatTopDate(dateInput: string | number | Date) {
@@ -68,7 +41,6 @@ function formatSmallDatetime(dateInput: string | number | Date) {
     typeof dateInput === "string" || typeof dateInput === "number"
       ? new Date(dateInput)
       : dateInput;
-  // day/month/year without forcing leading zero, time in 24h, Asia/Jakarta
   const dateParts = new Intl.DateTimeFormat("en", {
     day: "numeric",
     month: "numeric",
@@ -102,13 +74,33 @@ function relativeDayLabel(dateInput: string | number | Date) {
   return `${diffDays} days ago`;
 }
 
-export default function ActivityList({ onChange }: Props) {
+export default function ActivityList({ onActivityAdded }: Props) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [toDelete, setToDelete] = useState<string | null>(null);
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("isDarkMode");
+      return saved !== null ? saved === "true" : false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof window === "undefined") return;
+      const saved = sessionStorage.getItem("isDarkMode");
+      const cur = saved !== null ? saved === "true" : false;
+      setIsDarkMode(cur);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const uid = auth.currentUser?.uid;
 
+  // Initial load
   useEffect(() => {
     if (!uid) return;
 
@@ -143,13 +135,22 @@ export default function ActivityList({ onChange }: Props) {
             updatedAt: it.updatedAt,
           }));
           setLogs(mapped);
+
+          // Check if there's activity for today and notify parent
+          const today = todayISO();
+          const hasToday = mapped.some((log) => log.date === today);
+          if (hasToday && onActivityAdded) {
+            onActivityAdded();
+          }
         }
       } catch (err: any) {
-        if (axios.isCancel(err)) {
-          return;
-        }
+        if (axios.isCancel(err)) return;
         if (isMounted) {
           console.error("Failed to load activity logs from backend", err);
+          showToast(
+            err.response?.data?.message || "Failed to load activity logs",
+            "error"
+          );
           setLogs([]);
         }
       }
@@ -189,11 +190,20 @@ export default function ActivityList({ onChange }: Props) {
           updatedAt: it.updatedAt,
         }));
         setLogs(mapped);
-        onChange?.();
-      } catch (err) {
+
+        // Check if there's activity for today and notify parent
+        const today = todayISO();
+        const hasToday = mapped.some((log) => log.date === today);
+        if (hasToday && onActivityAdded) {
+          onActivityAdded();
+        }
+      } catch (err: any) {
         console.error("Failed to refresh from backend", err);
+        showToast(
+          err.response?.data?.message || "Failed to refresh activity logs",
+          "error"
+        );
         setLogs([]);
-        onChange?.();
       }
     })();
   };
@@ -233,6 +243,10 @@ export default function ActivityList({ onChange }: Props) {
 
       setAdding(false);
       refresh();
+
+      // ✅ NEXT LEVEL: tell parent to hide warning
+      onActivityAdded?.();
+
       showToast("Activity added", "success");
       return;
     } catch (err: any) {
@@ -263,7 +277,6 @@ export default function ActivityList({ onChange }: Props) {
     } else if (log.status === "off_duty") {
       payload.reason = log.reason;
     }
-    // idle status only needs id, date and status
 
     try {
       const backend = process.env.NEXT_PUBLIC_API_URL || "";
@@ -298,8 +311,6 @@ export default function ActivityList({ onChange }: Props) {
     setToDelete(id);
   };
 
-  const [toDelete, setToDelete] = useState<string | null>(null);
-
   const confirmDelete = () => {
     if (!uid || !toDelete) return;
     deleteActivityLog(uid, toDelete);
@@ -314,13 +325,18 @@ export default function ActivityList({ onChange }: Props) {
         <div className="min-w-0">
           <h2 className="text-lg font-semibold">Activity Logs</h2>
         </div>
+
         <div>
           {!adding && (
             <button
               onClick={() => setAdding(true)}
-              className="px-3 py-2 bg-blue-600 text-white rounded"
+              className={`px-3 py-2 font-semibold text-sm rounded transition ${
+                isDarkMode
+                  ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
+                  : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
+              }`}
             >
-              + Add Activity
+              Add Activity
             </button>
           )}
         </div>
@@ -338,23 +354,38 @@ export default function ActivityList({ onChange }: Props) {
 
       <div className="space-y-3">
         {logs.length === 0 && (
-          <div className="text-sm text-gray-500">No activity logs yet.</div>
+          <div
+            className={`text-sm ${
+              isDarkMode ? "text-gray-300" : "text-gray-500"
+            }`}
+          >
+            No activity logs yet.
+          </div>
         )}
+
         {logs.map((l) => {
           const isToday = l.date === todayISO();
           const relLabel = relativeDayLabel(l.date);
-          const relClass = "bg-gray-100 text-gray-700";
 
           return (
-            <div key={l.id} className="bg-white p-4 rounded shadow-sm relative">
-              {/* top-right relative time badge (hidden for today's items) */}
+            <div
+              key={l.id}
+              className={`${
+                isDarkMode ? "bg-white/5" : "bg-white"
+              } p-4 rounded shadow-sm relative`}
+            >
               {!isToday && (
                 <div
-                  className={`absolute right-3 top-3 px-2 py-0.5 rounded-full text-xs font-medium ${relClass}`}
+                  className={`absolute right-3 top-3 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    isDarkMode
+                      ? "bg-white/10 text-gray-200"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
                 >
                   {relLabel}
                 </div>
               )}
+
               {editingId === l.id ? (
                 <ActivityForm
                   initial={l}
@@ -366,9 +397,14 @@ export default function ActivityList({ onChange }: Props) {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-3">
-                      <div className="text-sm text-gray-500">
+                      <div
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
                         {formatTopDate(l.createdAt)}
                       </div>
+
                       <div
                         className={`text-sm px-2 py-1 rounded ${
                           l.status === "on_duty"
@@ -385,28 +421,63 @@ export default function ActivityList({ onChange }: Props) {
                           : "Idle"}
                       </div>
                     </div>
+
                     {l.title && (
-                      <div className="mt-2 font-medium text-gray-800">
+                      <div
+                        className={`mt-2 font-medium ${
+                          isDarkMode ? "text-white" : "text-gray-800"
+                        }`}
+                      >
                         {l.title}
                       </div>
                     )}
+
                     {l.detail && (
-                      <div className="mt-1 text-sm text-gray-600">
+                      <div
+                        className={`mt-1 text-sm ${
+                          isDarkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                      >
                         {l.detail}
                       </div>
                     )}
+
                     {l.status === "on_duty" && (
-                      <div className="mt-2 text-sm text-gray-600">
+                      <div
+                        className={`mt-2 text-sm ${
+                          isDarkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                      >
                         Start: {l.percentStart ?? "-"}% · End:{" "}
                         {l.percentEnd ?? "-"}%
                       </div>
                     )}
+
                     {l.status === "off_duty" && l.reason && (
-                      <div className="mt-2 text-sm text-gray-600">
+                      <div
+                        className={`mt-2 text-sm ${
+                          isDarkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                      >
                         Reason: {l.reason}
                       </div>
                     )}
-                    <div className="mt-2 text-xs text-gray-400">
+
+                    {l.status === "idle" && l.reason && (
+                      <div
+                        className={`mt-2 text-sm italic ${
+                          isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        {l.reason}
+                      </div>
+                    )}
+
+                    <div
+                      className={`mt-2 text-xs ${
+                        isDarkMode ? "text-gray-400" : "text-gray-400"
+                      }`}
+                    >
                       Created {formatSmallDatetime(l.createdAt)}
                       {l.updatedAt ? (
                         <span>
@@ -419,24 +490,18 @@ export default function ActivityList({ onChange }: Props) {
 
                   <div className="flex flex-col items-end gap-2">
                     {isToday ? (
-                      <div className="flex flex-col items-end gap-2">
-                        <button
-                          onClick={() => setEditingId(l.id)}
-                          title="Edit"
-                          aria-label={`Edit ${l.title}`}
-                          className="p-2 rounded border text-gray-600 hover:bg-gray-50"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(l.id)}
-                          title="Delete"
-                          aria-label={`Delete ${l.title}`}
-                          className="p-2 rounded border text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setEditingId(l.id)}
+                        title="Edit"
+                        aria-label={`Edit ${l.title}`}
+                        className={`p-2 rounded border ${
+                          isDarkMode
+                            ? "text-gray-300 border-white/10 hover:bg-white/5"
+                            : "text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
                     ) : null}
                   </div>
                 </div>

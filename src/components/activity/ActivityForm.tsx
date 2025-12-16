@@ -43,6 +43,23 @@ export default function ActivityForm({
   const [reasonOpen, setReasonOpen] = useState(false);
   const reasonRef = useRef<HTMLDivElement | null>(null);
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("isDarkMode");
+      return saved !== null ? saved === "true" : false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (typeof window === "undefined") return;
+      const saved = sessionStorage.getItem("isDarkMode");
+      setIsDarkMode(saved === "true");
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (e.target instanceof Node) {
@@ -403,8 +420,12 @@ export default function ActivityForm({
           type="submit"
           disabled={!isDirty}
           className={`px-4 py-2 ${
-            isDirty ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-          } rounded`}
+            isDirty
+              ? isDarkMode
+                ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
+                : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
+              : "bg-gray-200 text-gray-600"
+          } rounded text-sm font-medium`}
         >
           {initial ? "Save" : "Add Activity"}
         </button>
@@ -412,7 +433,7 @@ export default function ActivityForm({
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-2 border rounded text-gray-700"
+            className="px-3 py-2 border rounded text-gray-700 text-sm font-medium"
           >
             Cancel
           </button>
@@ -431,7 +452,7 @@ export default function ActivityForm({
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setConfirmOpen(false)}
-            className="px-3 py-2 border rounded"
+            className="px-3 py-2 border rounded text-sm"
           >
             Cancel
           </button>
@@ -443,7 +464,11 @@ export default function ActivityForm({
                 setPendingLog(null);
               }
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded"
+            className={`px-4 py-2 ${
+              isDarkMode
+                ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
+                : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
+            } rounded text-sm`}
           >
             Yes, {initial ? "Save" : "Add"}
           </button>

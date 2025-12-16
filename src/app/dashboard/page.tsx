@@ -1,36 +1,224 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { auth } from "@/lib/firebaseClient";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { FileText, Clipboard, Users } from "lucide-react";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import { useSidebar } from "@/hooks/useSidebar";
+import {
+  FileText,
+  Clipboard,
+  Users,
+  Calendar,
+  TrendingUp,
+  LogOut,
+  Key,
+  ChevronDown,
+  Sun,
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Trash,
+} from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
-// use native <img> for remote avatars to avoid next/image host config and restart
+import axios from "axios";
+import { getAppToken, clearAppToken } from "@/lib/api";
+import getIdToken from "@/lib/getIdToken";
+import { showToast } from "@/components/Toast";
+import Dropdown from "@/components/ui/dropdown";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+
+type ActivityRow = {
+  uid?: string;
+  id: string;
+  date: string;
+  status: string;
+  title?: string;
+  detail?: string;
+  percentStart?: number;
+  percentEnd?: number;
+  reason?: string;
+  userName?: string;
+  userEmail?: string;
+  createdAt: string;
+  updatedAt?: string;
+};
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const sidebarExpanded = useSidebar();
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("isDarkMode");
+      return saved !== null ? saved === "true" : false;
+    }
+    return false;
+  });
+  const router = useRouter();
+
+  // All Activities states
+  const today = (() => {
+    const d = new Date();
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const months = [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
+    ];
+    const dayName = days[d.getDay()];
+    const day = d.getDate();
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${dayName}, ${day} ${month} ${year}`;
+  })();
+
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | ActivityRow["status"]
+  >("all");
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [todayOnly, setTodayOnly] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const statusRef = useRef<HTMLDivElement | null>(null);
+  const userRef = useRef<HTMLDivElement | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const users = useMemo(() => {
+    const map = new Map<string, string>();
+    activities.forEach((r) => {
+      const display = r.userName || r.userEmail || r.uid || "Unknown";
+      const key = r.userEmail || r.uid || r.id;
+      map.set(key, display);
+    });
+    return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
+  }, [activities]);
+
+  const filteredRows = useMemo(() => {
+    if (!activities || activities.length === 0) return [];
+    return activities.filter((r) => {
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      const userKey = r.userEmail || r.uid || r.id;
+      if (userFilter !== "all" && userKey !== userFilter) return false;
+      if (todayOnly && r.date !== today) return false;
+      return true;
+    });
+  }, [activities, statusFilter, userFilter, todayOnly, today]);
+
+  useEffect(
+    () => setPage(1),
+    [statusFilter, userFilter, pageSize, dateRange, todayOnly]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
+
+  const handleClearFilters = () => {
+    setStatusFilter("all");
+    setUserFilter("all");
+    setTodayOnly(false);
+    setDateRange(undefined);
+    setPage(1);
+    setStatusOpen(false);
+    setUserOpen(false);
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  const displayName = user?.displayName || user?.email || "User";
-  const firstName = displayName.split(" ")[0];
-  const photoURL =
-    user?.photoURL ||
-    "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName);
-  const [avatarUrl, setAvatarUrl] = useState<string>(photoURL);
+  // Notify loader that navigation finished when this page mounts
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent("app:navigated"));
+    } catch (e) {
+      // ignore on server
+    }
+  }, []);
 
   useEffect(() => {
-    // Only generate avatar if user data is loaded
+    sessionStorage.setItem("isDarkMode", String(isDarkMode));
+  }, [isDarkMode]);
+
+  // ensure page background matches dark mode (covers areas outside React root)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    // toggle tailwind gradient classes on body so background matches dashboard
+    // use a purple gradient for dark mode and ensure body covers full height
+    const darkCls = [
+      "min-h-screen",
+      "bg-gradient-to-br",
+      "from-[#1f1744]",
+      "via-[#3b2aa8]",
+      "to-[#1a1a5a]",
+    ];
+    const lightCls = [
+      "min-h-screen",
+      "bg-gradient-to-br",
+      "from-white",
+      "via-gray-50",
+      "to-gray-100",
+    ];
+
+    const htmlEl = document.documentElement;
+    if (isDarkMode) {
+      document.body.classList.add(...darkCls);
+      htmlEl.classList.add(...darkCls);
+      // remove light classes if present
+      lightCls.forEach((c) => {
+        document.body.classList.remove(c);
+        htmlEl.classList.remove(c);
+      });
+    } else {
+      // remove dark classes then add light to both body and html
+      darkCls.forEach((c) => {
+        document.body.classList.remove(c);
+        htmlEl.classList.remove(c);
+      });
+      document.body.classList.add(...lightCls);
+      htmlEl.classList.add(...lightCls);
+    }
+  }, [isDarkMode]);
+
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+
+  // Compute display name reactively based on user state
+  const displayName = user?.displayName || user?.email || "User";
+  const firstName = displayName.split(" ")[0];
+
+  useEffect(() => {
     if (!user) return;
 
-    // Always use fun DiceBear avatar for dashboard (even if Google photo exists)
-    // This gives consistent, playful character avatars for all users
     try {
       const seedKey = user?.uid
         ? `dashboardAvatarSeed:${user.uid}`
@@ -41,118 +229,696 @@ export default function DashboardPage() {
         sessionStorage.setItem(seedKey, seed);
       }
 
-      // Use DiceBear v7 API with big-smile style (fun characters with big smiles)
       const dicebear = `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(
         seed
       )}&backgroundColor=ffffff`;
-      console.log("Setting DiceBear avatar:", dicebear);
       setAvatarUrl(dicebear);
     } catch (e) {
       console.error("Avatar generation error:", e);
-      // Fallback to Google photo or default if DiceBear fails
-      setAvatarUrl(user?.photoURL || photoURL);
+      setAvatarUrl(
+        user?.photoURL ||
+          "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName)
+      );
     }
-  }, [user, firstName, photoURL]);
+  }, [user, firstName]);
+
+  // Fetch activities with dateRange support
+  useEffect(() => {
+    if (!user) return;
+
+    const source = axios.CancelToken.source();
+
+    const fetchActivities = async () => {
+      try {
+        const backend = process.env.NEXT_PUBLIC_API_URL || "";
+        const params = new URLSearchParams();
+        params.append("sortBy", "date");
+        params.append("sortDir", "desc");
+
+        if (dateRange?.from) {
+          const start = dateRange.from;
+          const formattedStart = `${start.getFullYear()}-${String(
+            start.getMonth() + 1
+          ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+          params.append("startDate", formattedStart);
+        }
+
+        if (dateRange?.to) {
+          const end = dateRange.to;
+          const formattedEnd = `${end.getFullYear()}-${String(
+            end.getMonth() + 1
+          ).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+          params.append("endDate", formattedEnd);
+        }
+
+        const url = backend
+          ? `${backend.replace(
+              /\/$/,
+              ""
+            )}/api/dashboard/logbooklist?${params.toString()}`
+          : `/api/dashboard/logbooklist?${params.toString()}`;
+
+        const token = getAppToken();
+        const resp = await axios.get(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cancelToken: source.token,
+        });
+
+        const items = (resp.data.data || []) as any[];
+        const mapped: ActivityRow[] = items.map((it) => ({
+          id: it.id,
+          date: it.date,
+          status: it.status,
+          title: it.title,
+          detail: it.detail,
+          userName: it.userName,
+          userEmail: it.userEmail,
+          createdAt: it.createdAt,
+          percentStart: it.percentStart,
+          percentEnd: it.percentEnd,
+          reason: it.reason,
+          updatedAt: it.updatedAt,
+        }));
+        setActivities(mapped);
+      } catch (err: any) {
+        if (axios.isCancel(err)) {
+          return;
+        }
+        console.error("Error fetching activities:", err);
+        setActivities([]);
+      }
+    };
+
+    fetchActivities();
+
+    return () => {
+      source.cancel();
+    };
+  }, [user, dateRange]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      clearAppToken();
+      router.push("/login");
+    } catch (err) {
+      console.error("Sign-out failed:", err);
+      showToast("Sign out failed", "error");
+    }
+  };
+
+  const handleLogIdToken = async () => {
+    try {
+      if (!user) {
+        showToast("No user signed in", "error");
+        return;
+      }
+      const token = await getIdToken(false);
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(token || "");
+
+      console.log("=== ID TOKEN ===");
+      console.log(token);
+      console.log("================");
+      showToast("Token copied to clipboard!", "success");
+    } catch (err) {
+      console.error("Failed to get token:", err);
+      showToast("Failed to get token", "error");
+    }
+  };
 
   return (
     <AuthGuard>
-      <DashboardLayout>
-        {/* HEADER WITH PROFILE */}
-        <div className="flex items-center gap-5 bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-100 rounded-2xl p-6 shadow-sm">
-          <div className="relative">
-            <img
-              src={avatarUrl}
-              alt="Profile"
-              width={70}
-              height={70}
-              style={{ width: 70, height: 70 }}
-              className="rounded-full shadow-md border object-cover"
-            />
-            <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
+      <div
+        className={`min-h-screen transition-colors duration-300 ${
+          isDarkMode
+            ? "bg-gradient-to-br from-[#1f1744] via-[#3b2aa8] to-[#1a1a5a]"
+            : "bg-gradient-to-br from-white via-gray-50 to-gray-100"
+        }`}
+      >
+        <Sidebar />
+
+        {/* Main Content */}
+        <div
+          className={`p-4 md:p-6 transition-all duration-300 ${
+            sidebarExpanded ? "md:ml-64" : "md:ml-20"
+          } ml-0`}
+        >
+          {/* Header */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 mt-12 md:mt-0">
+            <div>
+              <h1
+                className={`text-3xl font-bold mb-1 ${
+                  isDarkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                Dashboard
+              </h1>
+              <div
+                className={`flex items-center gap-2 text-sm ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                <span>{today}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+              {/* dark mode toggle removed for now */}
+              {/* notification button removed for now */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-2 hover:opacity-80 transition"
+                >
+                  <img
+                    src={avatarUrl || "https://ui-avatars.com/api/?name=User"}
+                    alt="Profile"
+                    className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 ${
+                      isDarkMode ? "border-white/20" : "border-gray-300"
+                    }`}
+                  />
+                  <ChevronDown
+                    className={`w-4 h-4 hidden sm:block ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  />
+                </button>
+
+                {showProfileMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowProfileMenu(false)}
+                    />
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute right-0 mt-2 w-56 border rounded-lg shadow-xl overflow-hidden z-20 ${
+                        isDarkMode
+                          ? "bg-slate-800 border-white/20"
+                          : "bg-white border-gray-200"
+                      }`}
+                    >
+                      <div
+                        className={`px-4 py-3 border-b ${
+                          isDarkMode ? "border-white/10" : "border-gray-200"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-medium ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
+                        >
+                          {displayName}
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
+                          {user?.email}
+                        </p>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLogIdToken();
+                            setShowProfileMenu(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition ${
+                            isDarkMode
+                              ? "text-gray-300 hover:bg-white/10"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <Key className="w-4 h-4" />
+                          <span>Log ID Token</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSignOut();
+                            setShowProfileMenu(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition ${
+                            isDarkMode
+                              ? "text-red-400 hover:bg-white/10"
+                              : "text-red-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h1 className="text-3xl font-bold text-indigo-700">
-              Hi {firstName}! 👋
-            </h1>
-            <p className="text-gray-600 text-sm mt-1">
-              Hope you're having a productive day — let's get things moving ✨
+          {/* Greeting Card */}
+          <div
+            className={`backdrop-blur-sm border rounded-2xl p-4 mb-4 ${
+              isDarkMode
+                ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-white/20"
+                : "bg-gradient-to-r from-[#004d47]/10 via-[#09867e]/8 to-[#0c988d]/6 border-gray-200"
+            }`}
+          >
+            <h2
+              className={`text-2xl font-bold mb-2 ${
+                isDarkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              ✨{" "}
+              {(() => {
+                const hour = new Date().getHours();
+                if (hour < 12) return "Good Morning";
+                if (hour < 18) return "Good Afternoon";
+                return "Good Evening";
+              })()}
+              , {firstName}
+            </h2>
+            <p className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
+              Here's what's been happening recently
             </p>
           </div>
+
+          {/* All Activities Section */}
+          <div
+            className={`backdrop-blur-sm border rounded-2xl p-4 ${
+              isDarkMode
+                ? "bg-white/10 border-white/20"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <h3
+              className={`text-xl font-semibold mb-4 ${
+                isDarkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              All Activities
+            </h3>
+
+            {/* Filters */}
+            <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap md:items-end gap-2">
+              <div ref={statusRef}>
+                <label
+                  className={`text-sm ${
+                    isDarkMode ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  Status
+                </label>
+                <Dropdown
+                  options={[
+                    { value: "all", label: "All" },
+                    {
+                      value: "on_duty",
+                      label: (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-300" />
+                          <span>On duty</span>
+                        </span>
+                      ),
+                    },
+                    {
+                      value: "off_duty",
+                      label: (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-300" />
+                          <span>Off duty</span>
+                        </span>
+                      ),
+                    },
+                    {
+                      value: "idle",
+                      label: (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-300" />
+                          <span>Idle</span>
+                        </span>
+                      ),
+                    },
+                  ]}
+                  value={statusFilter}
+                  onChange={(v) => setStatusFilter(v as any)}
+                  width="w-44"
+                />
+              </div>
+
+              <div ref={userRef}>
+                <label
+                  className={`text-sm ${
+                    isDarkMode ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  User
+                </label>
+                <Dropdown
+                  options={[
+                    { value: "all", label: "All users" },
+                    ...users.map((u) => ({ value: u.uid, label: u.name })),
+                  ]}
+                  value={userFilter}
+                  onChange={(v) => setUserFilter(v)}
+                  width="w-64"
+                />
+              </div>
+
+              {/* Date Range Filter */}
+              <div>
+                <label
+                  className={`text-sm ${
+                    isDarkMode ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  Date Range
+                </label>
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  className="w-64"
+                />
+              </div>
+
+              <div />
+
+              {/* Quick shortcuts */}
+              <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto flex-wrap">
+                <button
+                  onClick={() => {
+                    setStatusFilter("idle");
+                    setUserFilter("all");
+                    setTodayOnly(true);
+                    setPage(1);
+                  }}
+                  className={`inline-flex items-center text-sm font-semibold gap-2 px-3 py-2 rounded-md transition ${
+                    isDarkMode
+                      ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
+                      : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
+                  }`}
+                >
+                  View Today’s Idle
+                </button>
+
+                {(statusFilter !== "all" ||
+                  userFilter !== "all" ||
+                  todayOnly ||
+                  dateRange) && (
+                  <button
+                    onClick={handleClearFilters}
+                    title="Clear filters"
+                    aria-label="Clear filters"
+                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border transition ${
+                      isDarkMode
+                        ? "border-gray-700 hover:bg-gray-800 text-gray-300"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <Trash
+                      className={`w-4 h-4 ${
+                        isDarkMode ? "text-red-400" : "text-red-600"
+                      }`}
+                    />
+                    <span className="text-sm">Clear Filters</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {filteredRows.length === 0 ? (
+              <div
+                className={`text-sm ${
+                  isDarkMode ? "text-white" : "text-gray-500"
+                }`}
+              >
+                No activity logs found.
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto -mx-6 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="min-w-full text-left border-collapse">
+                      <thead>
+                        <tr
+                          className={`text-sm border-b ${
+                            isDarkMode
+                              ? "text-gray-400 border-white/10"
+                              : "text-gray-600 border-gray-200"
+                          }`}
+                        >
+                          <th className="py-2 px-3 whitespace-nowrap">User</th>
+                          <th className="py-2 px-3 whitespace-nowrap">Date</th>
+                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3">Title / Reason</th>
+                          <th className="py-2 px-3">Details</th>
+                          <th className="py-2 px-3">Created</th>
+                          <th className="py-2 px-3">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedRows.map((r) => (
+                          <tr
+                            key={r.id}
+                            className={
+                              isDarkMode
+                                ? "odd:bg-gray-800/30"
+                                : "odd:bg-gray-50"
+                            }
+                          >
+                            <td
+                              className={`py-2 px-3 align-top text-sm ${
+                                isDarkMode ? "text-gray-300" : "text-gray-700"
+                              }`}
+                            >
+                              {r.userName || r.userEmail || "Unknown"}
+                            </td>
+                            <td
+                              className={`py-2 px-3 align-top text-sm ${
+                                isDarkMode ? "text-gray-300" : "text-gray-700"
+                              }`}
+                            >
+                              {r.date}
+                            </td>
+                            <td className="py-2 px-3 align-top text-sm">
+                              <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                  r.status === "on_duty"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : r.status === "off_duty"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-green-100 text-green-700"
+                                }`}
+                              >
+                                {r.status === "on_duty"
+                                  ? "On duty"
+                                  : r.status === "off_duty"
+                                  ? "Off duty"
+                                  : "Idle"}
+                              </span>
+                            </td>
+                            <td
+                              className={`py-2 px-3 align-top text-sm ${
+                                isDarkMode ? "text-gray-200" : "text-gray-800"
+                              }`}
+                            >
+                              {r.status === "off_duty" || r.status === "idle"
+                                ? r.reason || "-"
+                                : r.title || "-"}
+                            </td>
+                            <td
+                              className={`py-2 px-3 align-top text-sm ${
+                                isDarkMode ? "text-gray-300" : "text-gray-700"
+                              }`}
+                            >
+                              <div>
+                                <div>{r.detail || "-"}</div>
+                                {r.status === "on_duty" &&
+                                  r.percentStart !== undefined &&
+                                  r.percentEnd !== undefined && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {r.percentStart}% → {r.percentEnd}%
+                                    </div>
+                                  )}
+                              </div>
+                            </td>
+                            <td
+                              className={`py-2 px-3 align-top text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {r.createdAt
+                                ? new Date(r.createdAt).toLocaleString()
+                                : "-"}
+                            </td>
+                            <td
+                              className={`py-2 px-3 align-top text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {r.updatedAt
+                                ? new Date(r.updatedAt).toLocaleString()
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Pagination controls */}
+                <div className="mt-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
+                    <div
+                      className={`text-sm ${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      Showing{" "}
+                      {filteredRows.length === 0
+                        ? 0
+                        : (page - 1) * pageSize + 1}
+                      –{Math.min(page * pageSize, filteredRows.length)} of{" "}
+                      {filteredRows.length}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        Rows per page
+                      </div>
+                      <div className="w-24">
+                        <Dropdown
+                          options={[5, 10, 20, 50].map((n) => ({
+                            value: String(n),
+                            label: String(n),
+                          }))}
+                          value={String(pageSize)}
+                          onChange={(v) => {
+                            setPageSize(Number(v));
+                            setPage(1);
+                          }}
+                          width="w-24"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <nav
+                    className="flex items-center justify-center"
+                    aria-label="Pagination"
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                        aria-label="First page"
+                        title="First page"
+                        className={`p-2 rounded border ${
+                          page === 1
+                            ? isDarkMode
+                              ? "text-gray-600 border-gray-700"
+                              : "text-gray-400 border-gray-200"
+                            : isDarkMode
+                            ? "border-gray-700 hover:bg-white/5"
+                            : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        aria-label="Previous page"
+                        title="Previous page"
+                        className={`p-2 rounded border ${
+                          page === 1
+                            ? isDarkMode
+                              ? "text-gray-600 border-gray-700"
+                              : "text-gray-400 border-gray-200"
+                            : isDarkMode
+                            ? "border-gray-700 hover:bg-white/5"
+                            : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      {/* page number buttons (show up to 5 centered on current) */}
+                      {(() => {
+                        const pages: number[] = [];
+                        const start = Math.max(1, page - 2);
+                        const end = Math.min(totalPages, page + 2);
+                        for (let i = start; i <= end; i++) pages.push(i);
+                        return pages.map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            aria-current={p === page ? "page" : undefined}
+                            className={`px-3 py-1 rounded border ${
+                              p === page
+                                ? "bg-green-600 text-white border-green-600"
+                                : isDarkMode
+                                ? "border-gray-700 hover:bg-white/5"
+                                : "hover:bg-gray-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ));
+                      })()}
+
+                      <button
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={page === totalPages}
+                        aria-label="Next page"
+                        title="Next page"
+                        className={`p-2 rounded border ${
+                          page === totalPages
+                            ? isDarkMode
+                              ? "text-gray-600 border-gray-700"
+                              : "text-gray-400 border-gray-200"
+                            : isDarkMode
+                            ? "border-gray-700 hover:bg-white/5"
+                            : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setPage(totalPages)}
+                        disabled={page === totalPages}
+                        aria-label="Last page"
+                        title="Last page"
+                        className={`p-2 rounded border ${
+                          page === totalPages
+                            ? isDarkMode
+                              ? "text-gray-600 border-gray-700"
+                              : "text-gray-400 border-gray-200"
+                            : isDarkMode
+                            ? "border-gray-700 hover:bg-white/5"
+                            : "hover:bg-gray-50"
+                        }`}
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </nav>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-
-        {/* FEATURE CARDS */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <Link
-            href="/compare"
-            className="group block rounded-xl p-6 border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all bg-blue-100/60 border-blue-200"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-blue-200 text-blue-700 shadow-inner">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold group-hover:text-blue-700 transition">
-                  Attendance Comparator 📊
-                </h3>
-                <p className="text-sm text-gray-700 mt-1 mb-4 leading-relaxed">
-                  Compare two attendance files and detect mismatches instantly.
-                </p>
-                <Button variant="outline" size="sm" className="px-3">
-                  Open Comparator
-                </Button>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card 2 */}
-          <Link
-            href="/activity"
-            className="group block rounded-xl p-6 border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all bg-amber-100/60 border-amber-200"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-amber-200 text-amber-700 shadow-inner">
-                <Clipboard className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold group-hover:text-amber-700 transition">
-                  Activity Log 📝
-                </h3>
-                <p className="text-sm text-gray-700 mt-1 mb-4 leading-relaxed">
-                  Track your daily On/Off duty or Idle activities.
-                </p>
-                <Button variant="outline" size="sm" className="px-3">
-                  View Your Logs
-                </Button>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card 3 */}
-          <Link
-            href="/dashboard/all-activities"
-            className="group block rounded-xl p-6 border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all bg-green-100/60 border-green-200"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-green-200 text-green-700 shadow-inner">
-                <Users className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold group-hover:text-green-700 transition">
-                  All Activities 👥
-                </h3>
-                <p className="text-sm text-gray-700 mt-1 mb-4 leading-relaxed">
-                  Admin-only aggregated activity logs view.
-                </p>
-                <Button variant="outline" size="sm" className="px-3">
-                  Open Admin View
-                </Button>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </DashboardLayout>
+      </div>
     </AuthGuard>
   );
 }

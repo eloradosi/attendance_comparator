@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import apiFetch from "@/lib/api";
 import FileUpload from "@/components/FileUpload";
-import DashboardLayout from "@/components/DashboardLayout";
+import Sidebar from "@/components/Sidebar";
 import AuthGuard from "@/components/AuthGuard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
+import { useSidebar } from "@/hooks/useSidebar";
 
 export default function ComparePage() {
   const router = useRouter();
@@ -20,6 +21,20 @@ export default function ComparePage() {
   const [timesheetRows, setTimesheetRows] = useState<
     { date: string; checkin?: string | null; checkout?: string | null }[] | null
   >(null);
+  const sidebarExpanded = useSidebar();
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("isDarkMode");
+      return saved !== null ? saved === "true" : false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent("app:navigated"));
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const storedData = sessionStorage.getItem("comparisonResult");
@@ -193,9 +208,20 @@ export default function ComparePage() {
     // No comparison result yet — show upload UI so user can run comparator
     return (
       <AuthGuard>
-        <DashboardLayout>
-          <div className="min-h-screen py-8">
-            <div className="container mx-auto">
+        <div
+          className={`min-h-screen transition-colors duration-300 ${
+            isDarkMode
+              ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"
+              : "bg-gradient-to-br from-white via-gray-50 to-gray-100"
+          }`}
+        >
+          <Sidebar />
+          <div
+            className={`p-4 md:p-6 transition-all duration-300 ${
+              sidebarExpanded ? "md:ml-64" : "md:ml-20"
+            } ml-0 mt-12 md:mt-0`}
+          >
+            <div className="container mx-auto max-w-7xl">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="min-w-0">
                   <div>
@@ -218,26 +244,51 @@ export default function ComparePage() {
                 </div>
               </div>
 
-              <hr className="my-6 border-t border-gray-200" />
+              <hr
+                className={`my-6 border-t ${
+                  isDarkMode ? "border-white/10" : "border-gray-200"
+                }`}
+              />
 
-              <section className="bg-white p-6 rounded-lg shadow">
-                <p className="text-gray-600 mb-6">
+              <section
+                className={`p-6 rounded-lg backdrop-blur-sm border ${
+                  isDarkMode
+                    ? "bg-white/10 border-white/20"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <p
+                  className={`mb-6 ${
+                    isDarkMode ? "text-gray-200" : "text-gray-600"
+                  }`}
+                >
                   Upload IHCS and Timesheet files to compare attendance records.
                 </p>
                 <FileUpload onSubmit={handleSubmit} />
               </section>
             </div>
           </div>
-        </DashboardLayout>
+        </div>
       </AuthGuard>
     );
   }
 
   return (
     <AuthGuard>
-      <DashboardLayout>
-        <main className="min-h-screen bg-gray-50 py-8 px-4">
-          <div className="container mx-auto">
+      <div
+        className={`min-h-screen transition-colors duration-300 ${
+          isDarkMode
+            ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"
+            : "bg-gradient-to-br from-white via-gray-50 to-gray-100"
+        }`}
+      >
+        <Sidebar />
+        <main
+          className={`p-4 md:p-8 transition-all duration-300 ${
+            sidebarExpanded ? "md:ml-64" : "md:ml-20"
+          } ml-0 mt-16 md:mt-0`}
+        >
+          <div className="container mx-auto max-w-7xl">
             <div className="mb-6">
               {/* Breadcrumb: Dashboard > Attendance Comparator > Results */}
               <Breadcrumbs
@@ -270,70 +321,174 @@ export default function ComparePage() {
               />
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div
+              className={`rounded-lg p-6 mb-6 backdrop-blur-sm border ${
+                isDarkMode
+                  ? "bg-white/10 border-white/20"
+                  : "bg-white border-gray-200"
+              }`}
+            >
               <div className="flex items-center justify-between">
-                <BackHeader title="Comparison Results" href="/compare" />
+                <BackHeader
+                  title="Comparison Results"
+                  href="/compare"
+                  onBack={() => {
+                    try {
+                      sessionStorage.removeItem("comparisonResult");
+                      sessionStorage.removeItem("originalTimesheet");
+                      sessionStorage.removeItem("originalTimesheetPdf");
+                    } catch (e) {}
+                  }}
+                />
               </div>
               {data.summary.employeeName && (
-                <p className="text-sm text-gray-700 mb-1">
+                <p
+                  className={`text-sm mb-1 ${
+                    isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
                   <span className="font-medium">
                     {data.summary.employeeName}
                   </span>
                   {data.summary.employeeId && (
-                    <span className="ml-2 text-xs text-gray-500">
+                    <span
+                      className={`ml-2 text-xs ${
+                        isDarkMode ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
                       ({data.summary.employeeId})
                     </span>
                   )}
                 </p>
               )}
               {data.summary.note && (
-                <p className="text-sm text-gray-600 mt-1">
+                <p
+                  className={`text-sm mt-1 ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   {data.summary.note}
                 </p>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-blue-500/20" : "bg-blue-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
                     Total Rows (IHCS)
                   </p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-blue-300" : "text-blue-600"
+                    }`}
+                  >
                     {data.summary.totalRowsIhcs}
                   </p>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-blue-500/20" : "bg-blue-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
                     Total Rows (Timesheet)
                   </p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-blue-300" : "text-blue-600"
+                    }`}
+                  >
                     {data.summary.totalRowsTimesheet}
                   </p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Total Matched</p>
-                  <p className="text-2xl font-bold text-green-600">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-green-500/20" : "bg-green-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
+                    Total Matched
+                  </p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-green-300" : "text-green-600"
+                    }`}
+                  >
                     {data.summary.totalMatched}
                   </p>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-red-500/20" : "bg-red-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
                     Total Differences
                   </p>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-red-300" : "text-red-600"
+                    }`}
+                  >
                     {data.summary.totalDifferences}
                   </p>
                 </div>
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-yellow-500/20" : "bg-yellow-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
                     Missing in Timesheet
                   </p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-yellow-300" : "text-yellow-600"
+                    }`}
+                  >
                     {data.summary.totalMissingInTimesheet}
                   </p>
                 </div>
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Missing in IHCS</p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                <div
+                  className={`p-4 rounded-lg ${
+                    isDarkMode ? "bg-yellow-500/20" : "bg-yellow-50"
+                  }`}
+                >
+                  <p
+                    className={`text-sm mb-1 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-600"
+                    }`}
+                  >
+                    Missing in IHCS
+                  </p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      isDarkMode ? "text-yellow-300" : "text-yellow-600"
+                    }`}
+                  >
                     {data.summary.totalMissingInIhcs}
                   </p>
                 </div>
@@ -351,7 +506,7 @@ export default function ComparePage() {
             <DiffTable diffs={data.differences} />
           </div>
         </main>
-      </DashboardLayout>
+      </div>
     </AuthGuard>
   );
 }
