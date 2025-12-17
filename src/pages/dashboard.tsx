@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState, useMemo, useRef } from "react";
 import { auth } from "@/lib/firebaseClient";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
@@ -31,22 +29,10 @@ import { showToast } from "@/components/Toast";
 import Dropdown from "@/components/ui/dropdown";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
-
-type ActivityRow = {
-  uid?: string;
-  id: string;
-  date: string;
-  status: string;
-  title?: string;
-  detail?: string;
-  percentStart?: number;
-  percentEnd?: number;
-  reason?: string;
-  userName?: string;
-  userEmail?: string;
-  createdAt: string;
-  updatedAt?: string;
-};
+import {
+  fetchActivities,
+  type ActivityRow,
+} from "@/components/service/dashboard";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -248,57 +234,12 @@ export default function DashboardPage() {
 
     const source = axios.CancelToken.source();
 
-    const fetchActivities = async () => {
+    const loadActivities = async () => {
       try {
-        const backend = process.env.NEXT_PUBLIC_API_URL || "";
-        const params = new URLSearchParams();
-        params.append("sortBy", "date");
-        params.append("sortDir", "desc");
-
-        if (dateRange?.from) {
-          const start = dateRange.from;
-          const formattedStart = `${start.getFullYear()}-${String(
-            start.getMonth() + 1
-          ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
-          params.append("startDate", formattedStart);
-        }
-
-        if (dateRange?.to) {
-          const end = dateRange.to;
-          const formattedEnd = `${end.getFullYear()}-${String(
-            end.getMonth() + 1
-          ).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
-          params.append("endDate", formattedEnd);
-        }
-
-        const url = backend
-          ? `${backend.replace(
-              /\/$/,
-              ""
-            )}/api/dashboard/logbooklist?${params.toString()}`
-          : `/api/dashboard/logbooklist?${params.toString()}`;
-
-        const token = getAppToken();
-        const resp = await axios.get(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const mapped = await fetchActivities({
+          dateRange,
           cancelToken: source.token,
         });
-
-        const items = (resp.data.data || []) as any[];
-        const mapped: ActivityRow[] = items.map((it) => ({
-          id: it.id,
-          date: it.date,
-          status: it.status,
-          title: it.title,
-          detail: it.detail,
-          userName: it.userName,
-          userEmail: it.userEmail,
-          createdAt: it.createdAt,
-          percentStart: it.percentStart,
-          percentEnd: it.percentEnd,
-          reason: it.reason,
-          updatedAt: it.updatedAt,
-        }));
         setActivities(mapped);
       } catch (err: any) {
         if (axios.isCancel(err)) {
@@ -309,7 +250,7 @@ export default function DashboardPage() {
       }
     };
 
-    fetchActivities();
+    loadActivities();
 
     return () => {
       source.cancel();

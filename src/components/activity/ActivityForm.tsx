@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { ActivityLog, ActivityStatus } from "@/utils/activityStore";
 import Modal from "@/components/Modal";
+import { type ActivityLog } from "@/components/service/activity";
+
+export type ActivityStatus = "on_duty" | "off_duty" | "idle";
 
 type Props = {
   initial?: Partial<ActivityLog>;
@@ -468,7 +470,7 @@ export default function ActivityForm({
               isDarkMode
                 ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
                 : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
-            } rounded text-sm`}
+            } rounded text-sm font-semibold`}
           >
             Yes, {initial ? "Save" : "Add"}
           </button>

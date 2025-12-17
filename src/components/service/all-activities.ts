@@ -1,0 +1,84 @@
+import axios from "axios";
+import { getAppToken } from "@/lib/api";
+import { DateRange } from "react-day-picker";
+
+export type ActivityRow = {
+  uid?: string;
+  id: string;
+  date: string;
+  status: string;
+  title?: string;
+  detail?: string;
+  percentStart?: number;
+  percentEnd?: number;
+  reason?: string;
+  createdAt: string;
+  updatedAt?: string;
+  userName?: string;
+  userEmail?: string;
+};
+
+export interface FetchAllActivitiesParams {
+  dateRange?: DateRange;
+  cancelToken?: any;
+}
+
+/**
+ * Fetch all activities from backend API with optional date range filter
+ */
+export async function fetchAllActivities(
+  params: FetchAllActivitiesParams = {}
+): Promise<ActivityRow[]> {
+  const { dateRange, cancelToken } = params;
+
+  const backend = process.env.NEXT_PUBLIC_API_URL || "";
+
+  // Build query params
+  const queryParams = new URLSearchParams();
+  queryParams.append("sortBy", "date");
+  queryParams.append("sortDir", "desc");
+
+  if (dateRange?.from) {
+    const start = dateRange.from;
+    const formattedStart = `${start.getFullYear()}-${String(
+      start.getMonth() + 1
+    ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+    queryParams.append("startDate", formattedStart);
+  }
+
+  if (dateRange?.to) {
+    const end = dateRange.to;
+    const formattedEnd = `${end.getFullYear()}-${String(
+      end.getMonth() + 1
+    ).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+    queryParams.append("endDate", formattedEnd);
+  }
+
+  const url = backend
+    ? `${backend.replace(/\/$/, "")}/api/dashboard/logbooklist?${queryParams.toString()}`
+    : `/api/dashboard/logbooklist?${queryParams.toString()}`;
+
+  const token = getAppToken();
+  const resp = await axios.get(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    cancelToken,
+  });
+
+  const items = (resp.data.data || []) as any[];
+  const mapped: ActivityRow[] = items.map((it) => ({
+    id: it.id,
+    date: it.date,
+    status: it.status,
+    title: it.title,
+    detail: it.detail,
+    percentStart: it.percentStart,
+    percentEnd: it.percentEnd,
+    reason: it.reason,
+    createdAt: it.createdAt,
+    updatedAt: it.updatedAt,
+    userName: it.userName,
+    userEmail: it.userEmail,
+  }));
+
+  return mapped;
+}

@@ -77,11 +77,11 @@ export default function ActivityPage() {
             {/* HEADER */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="min-w-0">
-                <BackHeader title="Activity Log" href="/dashboard" />
-                <div className="mt-2">
+                <BackHeader title="Activity Log" path="/dashboard" />
+                <div className="mt-4">
                   <Breadcrumbs
                     items={[
-                      { href: "/dashboard", label: "Dashboard" },
+                      { path: "/dashboard", label: "Dashboard" },
                       { label: "Activity Log" },
                     ]}
                   />
@@ -107,9 +107,7 @@ export default function ActivityPage() {
                 <div className="flex items-start gap-3">
                   <span className="text-lg">⚠️</span>
                   <div className="space-y-1">
-                    <p className="font-medium">
-                      One activity per day only.
-                    </p>
+                    <p className="font-medium">One activity per day only.</p>
 
                     {isAfterMidnight ? (
                       <p>
@@ -118,8 +116,8 @@ export default function ActivityPage() {
                       </p>
                     ) : (
                       <p>
-                        Make sure to submit today’s activity before{" "}
-                        <b>12 AM</b>.
+                        Make sure to submit today’s activity before <b>12 AM</b>
+                        .
                       </p>
                     )}
                   </div>

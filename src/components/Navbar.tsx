@@ -1,13 +1,10 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/router";
 import { useState, useEffect, useRef } from "react";
 import GoogleAuth from "@/components/GoogleAuth";
 import { ChevronDown } from "lucide-react";
 
 export default function Navbar() {
-  const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -25,19 +22,15 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b shadow-sm">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        {/* LEFT SIDE */}
         <div className="flex items-center gap-10">
-          <Link
-            href="/dashboard"
-            className="text-xl font-semibold text-gray-900 hover:text-blue-600 transition"
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="text-xl font-semibold text-gray-900 hover:text-blue-600 transition cursor-pointer"
           >
             AttendanceApp
-          </Link>
-
-          {/* center nav removed per user preference */}
+          </button>
         </div>
 
-        {/* RIGHT SIDE — USER DROPDOWN */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setOpen(!open)}

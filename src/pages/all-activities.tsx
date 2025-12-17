@@ -15,25 +15,12 @@ import AuthGuard from "@/components/AuthGuard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
 import axios from "axios";
-import { getAppToken } from "@/lib/api";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
-
-type ActivityRow = {
-  uid?: string;
-  id: string;
-  date: string;
-  status: string;
-  title?: string;
-  detail?: string;
-  percentStart?: number;
-  percentEnd?: number;
-  reason?: string;
-  createdAt: string;
-  updatedAt?: string;
-  userName?: string;
-  userEmail?: string;
-};
+import {
+  fetchAllActivities,
+  type ActivityRow,
+} from "@/components/service/all-activities";
 
 export default function AllActivitiesPage() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
@@ -131,72 +118,23 @@ export default function AllActivitiesPage() {
 
     const source = axios.CancelToken.source();
 
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        const backend = process.env.NEXT_PUBLIC_API_URL || "";
-
-        // Build query params
-        const params = new URLSearchParams();
-        params.append("sortBy", "date");
-        params.append("sortDir", "desc");
-
-        if (dateRange?.from) {
-          const start = dateRange.from;
-          const formattedStart = `${start.getFullYear()}-${String(
-            start.getMonth() + 1
-          ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
-          params.append("startDate", formattedStart);
-        }
-
-        if (dateRange?.to) {
-          const end = dateRange.to;
-          const formattedEnd = `${end.getFullYear()}-${String(
-            end.getMonth() + 1
-          ).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
-          params.append("endDate", formattedEnd);
-        }
-
-        const url = backend
-          ? `${backend.replace(
-              /\/$/,
-              ""
-            )}/api/dashboard/logbooklist?${params.toString()}`
-          : `/api/dashboard/logbooklist?${params.toString()}`;
-
-        const token = getAppToken();
-        const resp = await axios.get(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const mapped = await fetchAllActivities({
+          dateRange,
           cancelToken: source.token,
         });
-
-        const items = (resp.data.data || []) as any[];
-        const mapped: ActivityRow[] = items.map((it) => ({
-          id: it.id,
-          date: it.date,
-          status: it.status,
-          title: it.title,
-          detail: it.detail,
-          percentStart: it.percentStart,
-          percentEnd: it.percentEnd,
-          reason: it.reason,
-          createdAt: it.createdAt,
-          updatedAt: it.updatedAt,
-          userName: it.userName,
-          userEmail: it.userEmail,
-        }));
         setRows(mapped);
-        return;
       } catch (err: any) {
         if (axios.isCancel(err)) {
           return;
         }
         console.error("Error fetching dashboard logbook list:", err);
-        // Show empty if backend fails
         setRows([]);
       }
     };
 
-    fetchData();
+    loadData();
 
     return () => {
       source.cancel();
@@ -219,11 +157,11 @@ export default function AllActivitiesPage() {
       <DashboardLayout>
         <div className="container mx-auto">
           <div className="mb-6">
-            <BackHeader title="All Activities" href="/dashboard" />
-            <div className="mt-2">
+            <BackHeader title="All Activities" path="/dashboard" />
+            <div className="mt-4">
               <Breadcrumbs
                 items={[
-                  { href: "/dashboard", label: "Dashboard" },
+                  { path: "/dashboard", label: "Dashboard" },
                   { label: "All Activities" },
                 ]}
               />

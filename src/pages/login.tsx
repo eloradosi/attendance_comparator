@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { auth } from "@/lib/firebaseClient";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
@@ -270,60 +268,6 @@ export default function LoginPage() {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes blob {
-          0%,
-          100% {
-            transform: translate(0, 0) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes bounceIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.3) translateY(-50px);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.05);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        .animate-bounceIn {
-          animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-      `}</style>
     </main>
   );
 }

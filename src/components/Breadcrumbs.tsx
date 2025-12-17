@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-type Crumb = { href?: string; label: string; onClick?: () => void };
+type Crumb = { path?: string; label: string; onClick?: () => void };
 
 export default function Breadcrumbs({ items }: { items: Crumb[] }) {
+  const router = useRouter();
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -29,23 +30,20 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           const isLast = idx === items.length - 1;
           return (
             <li key={idx} className="flex items-center">
-              {!isLast && it.href ? (
-                it.onClick ? (
-                  <button
-                    type="button"
-                    onClick={it.onClick}
-                    className={`hover:underline ${baseText} bg-transparent p-0 m-0`}
-                  >
-                    {it.label}
-                  </button>
-                ) : (
-                  <Link
-                    href={it.href}
-                    className={`hover:underline ${baseText}`}
-                  >
-                    {it.label}
-                  </Link>
-                )
+              {!isLast && (it.path || it.onClick) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (it.onClick) {
+                      it.onClick();
+                    } else if (it.path) {
+                      router.push(it.path);
+                    }
+                  }}
+                  className={`hover:underline ${baseText} bg-transparent p-0 m-0 cursor-pointer`}
+                >
+                  {it.label}
+                </button>
               ) : (
                 <span className={isLast ? lastText : baseText}>{it.label}</span>
               )}

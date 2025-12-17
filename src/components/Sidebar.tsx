@@ -1,8 +1,5 @@
-"use client";
-
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { FileText, Clipboard, Users, TrendingUp, LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
@@ -25,7 +22,7 @@ export default function Sidebar() {
     }
     return false;
   });
-  const pathname = usePathname();
+  const pathname = router.pathname;
 
   useEffect(() => {
     sessionStorage.setItem("sidebarExpanded", String(sidebarExpanded));
@@ -142,12 +139,14 @@ export default function Sidebar() {
           className="flex flex-col gap-2 px-3"
           onClick={(e) => e.stopPropagation()}
         >
-          <Link
-            href="/dashboard"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("app:navigate"))
-            }
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group ${
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("app:navigate"));
+              router.push("/dashboard");
+            }}
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group w-full text-left ${
+              sidebarExpanded ? "" : "justify-center"
+            } ${
               isActive("/dashboard")
                 ? isDarkMode
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
@@ -183,14 +182,16 @@ export default function Sidebar() {
                 Dashboard
               </span>
             )}
-          </Link>
+          </button>
 
-          <Link
-            href="/activity"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("app:navigate"))
-            }
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group ${
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("app:navigate"));
+              router.push("/activity");
+            }}
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group w-full text-left ${
+              sidebarExpanded ? "" : "justify-center"
+            } ${
               isActive("/activity")
                 ? isDarkMode
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
@@ -226,14 +227,16 @@ export default function Sidebar() {
                 Activity Log
               </span>
             )}
-          </Link>
+          </button>
 
-          <Link
-            href="/compare"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent("app:navigate"))
-            }
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group ${
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("app:navigate"));
+              router.push("/compare");
+            }}
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group w-full text-left ${
+              sidebarExpanded ? "" : "justify-center"
+            } ${
               isActive("/compare")
                 ? isDarkMode
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
@@ -269,7 +272,7 @@ export default function Sidebar() {
                 Attendance Comparator
               </span>
             )}
-          </Link>
+          </button>
         </nav>
 
         {/* Sign Out Button at Bottom */}
@@ -277,6 +280,8 @@ export default function Sidebar() {
           <button
             onClick={handleSignOut}
             className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition w-full ${
+              sidebarExpanded ? "" : "justify-center"
+            } ${
               isDarkMode
                 ? "hover:bg-red-500/20 border-transparent hover:border-red-500/30"
                 : "hover:bg-red-50 border-transparent hover:border-red-200"

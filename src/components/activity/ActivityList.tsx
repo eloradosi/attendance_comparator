@@ -2,26 +2,22 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { getAppToken } from "@/lib/api";
-import { ActivityLog } from "@/utils/activityStore";
-import { deleteActivityLog } from "@/utils/activityStore";
 import { showToast } from "@/components/Toast";
 import ActivityForm from "@/components/activity/ActivityForm";
 import Modal from "@/components/Modal";
 import { auth } from "@/lib/firebaseClient";
 import { Edit } from "lucide-react";
+import {
+  fetchMyActivities,
+  saveActivity,
+  deleteActivity,
+  todayISO,
+  type ActivityLog,
+} from "@/components/service/activity";
 
 type Props = {
   onActivityAdded?: () => void; // ✅ NEW: trigger parent (hide warning)
 };
-
-function todayISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 function formatTopDate(dateInput: string | number | Date) {
   const d =
@@ -109,31 +105,13 @@ export default function ActivityList({ onActivityAdded }: Props) {
 
     (async () => {
       try {
-        const backend = process.env.NEXT_PUBLIC_API_URL || "";
-        const url = backend
-          ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=0&size=100`
-          : `/api/logbook/my?page=0&size=100`;
-
-        const token = getAppToken();
-        const resp = await axios.get(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const mapped = await fetchMyActivities({
+          page: 0,
+          size: 100,
           cancelToken: source.token,
         });
 
         if (isMounted) {
-          const items = (resp.data.data || []) as any[];
-          const mapped: ActivityLog[] = items.map((it) => ({
-            id: it.id,
-            date: it.date,
-            status: it.status,
-            title: it.title,
-            detail: it.detail,
-            percentStart: it.percentStart,
-            percentEnd: it.percentEnd,
-            reason: it.reason,
-            createdAt: it.createdAt,
-            updatedAt: it.updatedAt,
-          }));
           setLogs(mapped);
 
           // Check if there's activity for today and notify parent
@@ -166,29 +144,11 @@ export default function ActivityList({ onActivityAdded }: Props) {
     if (!uid) return;
     (async () => {
       try {
-        const backend = process.env.NEXT_PUBLIC_API_URL || "";
-        const url = backend
-          ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=0&size=100`
-          : `/api/logbook/my?page=0&size=100`;
-
-        const token = getAppToken();
-        const resp = await axios.get(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        const mapped = await fetchMyActivities({
+          page: 0,
+          size: 100,
         });
 
-        const items = (resp.data.data || []) as any[];
-        const mapped: ActivityLog[] = items.map((it) => ({
-          id: it.id,
-          date: it.date,
-          status: it.status,
-          title: it.title,
-          detail: it.detail,
-          percentStart: it.percentStart,
-          percentEnd: it.percentEnd,
-          reason: it.reason,
-          createdAt: it.createdAt,
-          updatedAt: it.updatedAt,
-        }));
         setLogs(mapped);
 
         // Check if there's activity for today and notify parent
@@ -211,36 +171,10 @@ export default function ActivityList({ onActivityAdded }: Props) {
   const handleAdd = async (log: ActivityLog) => {
     if (!uid) return;
 
-    // Build payload based on status
-    const payload: any = {
-      date: log.date,
-      status: log.status,
-    };
-
-    if (log.status === "on_duty") {
-      payload.title = log.title;
-      payload.detail = log.detail;
-      payload.percentStart = log.percentStart;
-      payload.percentEnd = log.percentEnd;
-    } else if (log.status === "off_duty") {
-      payload.reason = log.reason;
-    }
-    // idle status only needs date and status
-
     try {
-      const backend = process.env.NEXT_PUBLIC_API_URL || "";
-      const url = backend
-        ? `${backend.replace(/\/$/, "")}/api/logbook/save`
-        : `/api/logbook/save`;
-
-      const token = getAppToken();
-      await axios.post(url, payload, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
+      // For new activity, don't send id (let backend generate it)
+      const { id, createdAt, updatedAt, ...logWithoutId } = log;
+      await saveActivity(logWithoutId as ActivityLog);
       setAdding(false);
       refresh();
 
@@ -262,36 +196,8 @@ export default function ActivityList({ onActivityAdded }: Props) {
   const handleSave = async (log: ActivityLog) => {
     if (!uid) return;
 
-    // Build payload based on status (include id for edit)
-    const payload: any = {
-      id: log.id,
-      date: log.date,
-      status: log.status,
-    };
-
-    if (log.status === "on_duty") {
-      payload.title = log.title;
-      payload.detail = log.detail;
-      payload.percentStart = log.percentStart;
-      payload.percentEnd = log.percentEnd;
-    } else if (log.status === "off_duty") {
-      payload.reason = log.reason;
-    }
-
     try {
-      const backend = process.env.NEXT_PUBLIC_API_URL || "";
-      const url = backend
-        ? `${backend.replace(/\/$/, "")}/api/logbook/save`
-        : `/api/logbook/save`;
-
-      const token = getAppToken();
-      await axios.post(url, payload, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
+      await saveActivity(log);
       setEditingId(null);
       refresh();
       showToast("Activity updated", "success");
@@ -311,12 +217,21 @@ export default function ActivityList({ onActivityAdded }: Props) {
     setToDelete(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!uid || !toDelete) return;
-    deleteActivityLog(uid, toDelete);
-    setToDelete(null);
-    refresh();
-    showToast("Activity deleted", "info");
+    try {
+      await deleteActivity(toDelete);
+      setToDelete(null);
+      refresh();
+      showToast("Activity deleted", "success");
+    } catch (err: any) {
+      console.error("Error deleting activity:", err);
+      showToast(
+        err.response?.data?.message || "Failed to delete activity",
+        "error"
+      );
+      setToDelete(null);
+    }
   };
 
   return (
@@ -402,7 +317,7 @@ export default function ActivityList({ onActivityAdded }: Props) {
                           isDarkMode ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
-                        {formatTopDate(l.createdAt)}
+                        {l.createdAt ? formatTopDate(l.createdAt) : "-"}
                       </div>
 
                       <div
@@ -478,7 +393,8 @@ export default function ActivityList({ onActivityAdded }: Props) {
                         isDarkMode ? "text-gray-400" : "text-gray-400"
                       }`}
                     >
-                      Created {formatSmallDatetime(l.createdAt)}
+                      Created{" "}
+                      {l.createdAt ? formatSmallDatetime(l.createdAt) : "-"}
                       {l.updatedAt ? (
                         <span>
                           {" "}
