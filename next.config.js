@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  output: "standalone",
   images: {
     // allow external profile images from Google (used by Firebase/GoogleAuth)
     domains: [
