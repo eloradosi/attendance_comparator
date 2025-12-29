@@ -205,27 +205,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
-    try {
-      const seedKey = user?.uid
-        ? `dashboardAvatarSeed:${user.uid}`
-        : `dashboardAvatarSeed:anon`;
-      let seed = sessionStorage.getItem(seedKey);
-      if (!seed) {
-        seed = `${firstName}-${Math.random().toString(36).slice(2, 8)}`;
-        sessionStorage.setItem(seedKey, seed);
-      }
-
-      const dicebear = `https://api.dicebear.com/7.x/big-smile/svg?seed=${encodeURIComponent(
-        seed
-      )}&backgroundColor=ffffff`;
-      setAvatarUrl(dicebear);
-    } catch (e) {
-      console.error("Avatar generation error:", e);
-      setAvatarUrl(
-        user?.photoURL ||
-          "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName)
-      );
-    }
+    // Use Gmail profile photo directly
+    setAvatarUrl(
+      user?.photoURL ||
+        "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName)
+    );
   }, [user, firstName]);
 
   // Fetch activities with dateRange support
@@ -383,7 +367,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="py-1">
-                        <button
+                        {/* <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleLogIdToken();
@@ -397,7 +381,7 @@ export default function DashboardPage() {
                         >
                           <Key className="w-4 h-4" />
                           <span>Log ID Token</span>
-                        </button>
+                        </button> */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
