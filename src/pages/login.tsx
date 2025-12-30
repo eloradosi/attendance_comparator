@@ -86,6 +86,8 @@ export default function LoginPage() {
           // Store backend session token
           if (data?.token) {
             setAppToken(data.token);
+            // Wait a bit to ensure token is stored before navigation
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
           showToast("Sign in successful!", "success");
           // Remove stored lastPath so we don't reuse it later; then go to dashboard
