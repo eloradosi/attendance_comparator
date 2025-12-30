@@ -61,7 +61,20 @@ export default function AuthGuard({ children }: PropsWithChildren) {
         const redirectTo = encodeURIComponent(pathname || "/");
         router.replace(`/login?next=${redirectTo}`);
       } else {
-        setReady(true);
+        // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
+        if (pathname === "/login") {
+          const lastPath =
+            typeof window !== "undefined"
+              ? sessionStorage.getItem("lastPath")
+              : null;
+          if (lastPath && lastPath !== "/login") {
+            router.replace(lastPath);
+          } else {
+            router.replace("/dashboard");
+          }
+        } else {
+          setReady(true);
+        }
       }
     });
     return () => unsub();

@@ -18,22 +18,37 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Instantly redirect if already logged in
+  // Check auth immediately - don't render anything if already logged in
+  const [shouldRender, setShouldRender] = useState(false);
+
   useEffect(() => {
+    const checkAuth = () => {
+      if (auth.currentUser) {
+        // Already logged in, redirect immediately
+        const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
+        router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
+        return;
+      }
+      // Not logged in, allow rendering
+      setShouldRender(true);
+    };
+
+    checkAuth();
+
+    // Listen for auth state changes
     const unsub = onAuthStateChanged(auth, (u) => {
       if (u) {
-        // Only block /login access if already authenticated
-        // But after successful login, always go to dashboard
-        if (window.location.pathname === "/login") {
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem("lastPath");
-          }
-          router.replace("/dashboard");
-        }
+        const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
+        router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
       }
     });
     return () => unsub();
   }, [router]);
+
+  // Don't render anything until we confirm user is not authenticated
+  if (!shouldRender) {
+    return null;
+  }
 
   const handleSignIn = async () => {
     setIsLoading(true);
