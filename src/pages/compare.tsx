@@ -106,10 +106,10 @@ export default function ComparePage() {
           <div
             className={`p-4 md:p-6 transition-all duration-300 ${
               sidebarExpanded ? "md:ml-64" : "md:ml-20"
-            } ml-0 mt-12 md:mt-0`}
+            } ml-0 mt-16 md:mt-0`}
           >
             <div className="container mx-auto max-w-7xl">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div className="min-w-0">
                   <div>
                     {/* Back arrow + title */}
@@ -132,20 +132,20 @@ export default function ComparePage() {
               </div>
 
               <hr
-                className={`my-6 border-t ${
+                className={`my-4 md:my-6 border-t ${
                   isDarkMode ? "border-white/10" : "border-gray-200"
                 }`}
               />
 
               <section
-                className={`p-6 rounded-lg backdrop-blur-sm border ${
+                className={`p-4 md:p-6 rounded-lg backdrop-blur-sm border ${
                   isDarkMode
                     ? "bg-white/10 border-white/20"
                     : "bg-white border-gray-200"
                 }`}
               >
                 <p
-                  className={`mb-6 ${
+                  className={`mb-4 md:mb-6 text-sm md:text-base ${
                     isDarkMode ? "text-gray-200" : "text-gray-600"
                   }`}
                 >

@@ -232,18 +232,20 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Upload Attendance Files</CardTitle>
-        <CardDescription>
+    <Card className="w-full max-w-2xl mx-auto overflow-hidden">
+      <CardHeader className="space-y-2 px-4 md:px-6 py-4 md:py-6">
+        <CardTitle className="text-lg md:text-xl">
+          Upload Attendance Files
+        </CardTitle>
+        <CardDescription className="text-sm">
           Upload IHCS and Timesheet to compare. Supported formats: CSV, XLSX,
           PDF
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <CardContent className="px-4 md:px-6 pb-4 md:pb-6 pt-0">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="fileA" className="text-base">
+            <Label htmlFor="fileA" className="text-sm md:text-base">
               IHCS
             </Label>
             <div className="flex items-center gap-3">
@@ -260,12 +262,12 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
                 onDragEnter={() => handleDragEnter("A")}
                 onDragLeave={() => handleDragLeave("A")}
                 onClick={() => document.getElementById("fileA")?.click()}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
                   dragA ? "bg-gray-50 border-primary" : ""
                 }`}
               >
-                <Upload className="w-5 h-5" />
-                <span className="text-sm">
+                <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span className="text-xs md:text-sm truncate">
                   {fileA ? fileA.name : "Drag & drop or click to choose file"}
                 </span>
               </div>
@@ -284,7 +286,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="fileB" className="text-base">
+            <Label htmlFor="fileB" className="text-sm md:text-base">
               Timesheet
             </Label>
             <div className="flex items-center gap-3">
@@ -301,12 +303,12 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
                 onDragEnter={() => handleDragEnter("B")}
                 onDragLeave={() => handleDragLeave("B")}
                 onClick={() => document.getElementById("fileB")?.click()}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
                   dragB ? "bg-gray-50 border-primary" : ""
                 }`}
               >
-                <Upload className="w-5 h-5" />
-                <span className="text-sm">
+                <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span className="text-xs md:text-sm truncate">
                   {fileB ? fileB.name : "Drag & drop or click to choose file"}
                 </span>
               </div>

@@ -22,7 +22,7 @@ export default function BackHeader({ title, path, onBack }: Props) {
   }, []);
 
   return (
-    <div className="flex items-center gap-3 relative z-40">
+    <div className="flex items-center gap-2 md:gap-3 relative z-40">
       <button
         type="button"
         onClick={() => {
@@ -41,18 +41,20 @@ export default function BackHeader({ title, path, onBack }: Props) {
             console.warn("BackHeader onClick failed", e);
           }
         }}
-        className="inline-flex items-center justify-center w-8 h-8 pointer-events-auto cursor-pointer"
+        className="inline-flex items-center justify-center w-8 h-8 pointer-events-auto cursor-pointer flex-shrink-0"
         aria-label="back"
       >
         <ArrowLeft
-          className={`w-6 h-6 ${
+          className={`w-5 h-5 md:w-6 md:h-6 ${
             isDarkMode ? "text-gray-200" : "text-gray-700"
           }`}
         />
       </button>
 
       <h1
-        className={`text-2xl font-semibold ${isDarkMode ? "text-white" : ""}`}
+        className={`text-xl md:text-2xl font-semibold ${
+          isDarkMode ? "text-white" : ""
+        }`}
       >
         {title}
       </h1>

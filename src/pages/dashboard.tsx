@@ -143,6 +143,38 @@ export default function DashboardPage() {
     return () => unsub();
   }, []);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      clearAppToken();
+      router.push("/login");
+    } catch (err) {
+      console.error("Sign-out failed:", err);
+      showToast("Sign out failed", "error");
+    }
+  };
+
+  // Check token expiry periodically and auto sign-out if expired
+  useEffect(() => {
+    if (!user) return;
+
+    const checkExpiry = async () => {
+      const { isTokenExpired } = await import("@/lib/api");
+      if (isTokenExpired()) {
+        showToast("Session expired. Please sign in again.", "error");
+        await handleSignOut();
+      }
+    };
+
+    // Check immediately
+    checkExpiry();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkExpiry, 30000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Notify loader that navigation finished when this page mounts
   useEffect(() => {
     try {
@@ -241,17 +273,6 @@ export default function DashboardPage() {
     };
   }, [user, dateRange]);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      clearAppToken();
-      router.push("/login");
-    } catch (err) {
-      console.error("Sign-out failed:", err);
-      showToast("Sign out failed", "error");
-    }
-  };
-
   const handleLogIdToken = async () => {
     try {
       if (!user) {
@@ -291,26 +312,32 @@ export default function DashboardPage() {
           } ml-0`}
         >
           {/* Header */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 mt-12 md:mt-0">
+          <div className="flex flex-row items-center justify-between mb-8 gap-4 mt-12 md:mt-0">
             <div>
               <h1
-                className={`text-3xl font-bold mb-1 ${
+                className={`text-2xl md:text-3xl font-bold mb-1 ${
                   isDarkMode ? "text-white" : "text-gray-900"
                 }`}
               >
                 Dashboard
               </h1>
               <div
-                className={`flex items-center gap-2 text-sm ${
+                className={`flex items-center gap-2 text-xs md:text-sm ${
                   isDarkMode ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                <Calendar className="w-4 h-4" />
-                <span>{today}</span>
+                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">{today}</span>
+                <span className="sm:hidden">
+                  {new Date().toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+            <div className="flex items-center gap-2 md:gap-4">
               {/* dark mode toggle removed for now */}
               {/* notification button removed for now */}
               <div className="relative">
@@ -407,14 +434,14 @@ export default function DashboardPage() {
 
           {/* Greeting Card */}
           <div
-            className={`backdrop-blur-sm border rounded-2xl p-4 mb-4 ${
+            className={`backdrop-blur-sm border rounded-xl md:rounded-2xl p-3 md:p-4 mb-4 ${
               isDarkMode
                 ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-white/20"
                 : "bg-gradient-to-r from-[#004d47]/10 via-[#09867e]/8 to-[#0c988d]/6 border-gray-200"
             }`}
           >
             <h2
-              className={`text-2xl font-bold mb-2 ${
+              className={`text-lg md:text-2xl font-bold mb-1 md:mb-2 ${
                 isDarkMode ? "text-white" : "text-gray-900"
               }`}
             >
@@ -427,7 +454,11 @@ export default function DashboardPage() {
               })()}
               , {firstName}
             </h2>
-            <p className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
+            <p
+              className={`text-sm md:text-base ${
+                isDarkMode ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
               Here's what's been happening recently
             </p>
           </div>
@@ -449,129 +480,129 @@ export default function DashboardPage() {
             </h3>
 
             {/* Filters */}
-            <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap md:items-end gap-2">
-              <div ref={statusRef}>
-                <label
-                  className={`text-sm ${
-                    isDarkMode ? "text-white" : "text-gray-600"
-                  }`}
-                >
-                  Status
-                </label>
-                <Dropdown
-                  options={[
-                    { value: "all", label: "All" },
-                    {
-                      value: "on_duty",
-                      label: (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-300" />
-                          <span>On duty</span>
-                        </span>
-                      ),
-                    },
-                    {
-                      value: "off_duty",
-                      label: (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-red-300" />
-                          <span>Off duty</span>
-                        </span>
-                      ),
-                    },
-                    {
-                      value: "idle",
-                      label: (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-300" />
-                          <span>Idle</span>
-                        </span>
-                      ),
-                    },
-                  ]}
-                  value={statusFilter}
-                  onChange={(v) => setStatusFilter(v as any)}
-                  width="w-44"
-                />
-              </div>
-
-              <div ref={userRef}>
-                <label
-                  className={`text-sm ${
-                    isDarkMode ? "text-white" : "text-gray-600"
-                  }`}
-                >
-                  User
-                </label>
-                <Dropdown
-                  options={[
-                    { value: "all", label: "All users" },
-                    ...users.map((u) => ({ value: u.uid, label: u.name })),
-                  ]}
-                  value={userFilter}
-                  onChange={(v) => setUserFilter(v)}
-                  width="w-64"
-                />
-              </div>
-
-              {/* Date Range Filter */}
-              <div>
-                <label
-                  className={`text-sm ${
-                    isDarkMode ? "text-white" : "text-gray-600"
-                  }`}
-                >
-                  Date Range
-                </label>
-                <DateRangePicker
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  className="w-64"
-                />
-              </div>
-
-              <div />
-
-              {/* Quick shortcuts */}
-              <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto flex-wrap">
-                <button
-                  onClick={() => {
-                    setStatusFilter("idle");
-                    setUserFilter("all");
-                    setTodayOnly(true);
-                    setPage(1);
-                  }}
-                  className={`inline-flex items-center text-sm font-semibold gap-2 px-3 py-2 rounded-md transition ${
-                    isDarkMode
-                      ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
-                      : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
-                  }`}
-                >
-                  View Today’s Idle
-                </button>
-
-                {(statusFilter !== "all" ||
-                  userFilter !== "all" ||
-                  todayOnly ||
-                  dateRange) && (
-                  <button
-                    onClick={handleClearFilters}
-                    title="Clear filters"
-                    aria-label="Clear filters"
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border transition ${
-                      isDarkMode
-                        ? "border-gray-700 hover:bg-gray-800 text-gray-300"
-                        : "hover:bg-gray-50"
+            <div className="mb-4">
+              <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-3">
+                <div ref={statusRef}>
+                  <label
+                    className={`text-sm ${
+                      isDarkMode ? "text-white" : "text-gray-600"
                     }`}
                   >
-                    <Trash
-                      className={`w-4 h-4 ${
-                        isDarkMode ? "text-red-400" : "text-red-600"
-                      }`}
-                    />
-                    <span className="text-sm">Clear Filters</span>
+                    Status
+                  </label>
+                  <Dropdown
+                    options={[
+                      { value: "all", label: "All" },
+                      {
+                        value: "on_duty",
+                        label: (
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-300" />
+                            <span>On duty</span>
+                          </span>
+                        ),
+                      },
+                      {
+                        value: "off_duty",
+                        label: (
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-300" />
+                            <span>Off duty</span>
+                          </span>
+                        ),
+                      },
+                      {
+                        value: "idle",
+                        label: (
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-300" />
+                            <span>Idle</span>
+                          </span>
+                        ),
+                      },
+                    ]}
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v as any)}
+                    width="w-44"
+                  />
+                </div>
+
+                <div ref={userRef}>
+                  <label
+                    className={`text-sm ${
+                      isDarkMode ? "text-white" : "text-gray-600"
+                    }`}
+                  >
+                    User
+                  </label>
+                  <Dropdown
+                    options={[
+                      { value: "all", label: "All users" },
+                      ...users.map((u) => ({ value: u.uid, label: u.name })),
+                    ]}
+                    value={userFilter}
+                    onChange={(v) => setUserFilter(v)}
+                    width="w-64"
+                  />
+                </div>
+
+                {/* Date Range Filter */}
+                <div>
+                  <label
+                    className={`text-sm ${
+                      isDarkMode ? "text-white" : "text-gray-600"
+                    }`}
+                  >
+                    Date Range
+                  </label>
+                  <DateRangePicker
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                    className="w-64"
+                  />
+                </div>
+
+                {/* Quick shortcuts - desktop inline, mobile below */}
+                <div className="flex items-end gap-2 flex-wrap mt-2 lg:mt-0">
+                  <button
+                    onClick={() => {
+                      setStatusFilter("idle");
+                      setUserFilter("all");
+                      setTodayOnly(true);
+                      setPage(1);
+                    }}
+                    className={`inline-flex items-center text-sm font-semibold gap-2 px-3 py-2 rounded-md transition ${
+                      isDarkMode
+                        ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
+                        : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
+                    }`}
+                  >
+                    View Today’s Idle
                   </button>
-                )}
+
+                  {(statusFilter !== "all" ||
+                    userFilter !== "all" ||
+                    todayOnly ||
+                    dateRange) && (
+                    <button
+                      onClick={handleClearFilters}
+                      title="Clear filters"
+                      aria-label="Clear filters"
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border transition ${
+                        isDarkMode
+                          ? "border-gray-700 hover:bg-gray-800 text-gray-300"
+                          : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <Trash
+                        className={`w-4 h-4 ${
+                          isDarkMode ? "text-red-400" : "text-red-600"
+                        }`}
+                      />
+                      <span className="text-sm">Clear Filters</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

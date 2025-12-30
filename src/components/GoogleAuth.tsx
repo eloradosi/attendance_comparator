@@ -13,7 +13,11 @@ import {
 } from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
 import { showToast } from "@/components/Toast";
-import apiFetch, { setAppToken, clearAppToken } from "@/lib/api";
+import apiFetch, {
+  setAppToken,
+  clearAppToken,
+  setTokenExpiry,
+} from "@/lib/api";
 
 export default function GoogleAuth({
   mode = "full",
@@ -63,6 +67,11 @@ export default function GoogleAuth({
           // Store token in sessionStorage (persists on reload, cleared when tab closes)
           if (data?.token) {
             setAppToken(data.token);
+          }
+          // Store expiry time if provided
+          if (data?.expiryTime) {
+            const { setTokenExpiry } = await import("@/lib/api");
+            setTokenExpiry(data.expiryTime);
           }
           showToast("Signed in", "success");
         }

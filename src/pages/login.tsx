@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { auth } from "@/lib/firebaseClient";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+} from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
-import { setAppToken } from "@/lib/api";
+import { setAppToken, isTokenExpired, setTokenExpiry } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 import Link from "next/link";
 
@@ -11,6 +15,16 @@ export default function LoginPage() {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Redirect to dashboard if already logged in with valid token
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user && !isTokenExpired()) {
+        router.replace("/dashboard");
+      }
+    });
+    return () => unsub();
+  }, [router]);
 
   const handleSignIn = async () => {
     setIsLoading(true);
@@ -48,6 +62,10 @@ export default function LoginPage() {
           // Store backend session token
           if (data?.token) {
             setAppToken(data.token);
+          }
+          // Store expiry time if provided
+          if (data?.expiryTime) {
+            setTokenExpiry(data.expiryTime);
           }
           showToast("Sign in successful!", "success");
           router.push("/dashboard");
@@ -102,10 +120,10 @@ export default function LoginPage() {
           {/* CTA Button */}
           <button
             onClick={() => setShowModal(true)}
-            className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-[#0c988d] to-[#09867e] rounded-full overflow-hidden shadow-2xl hover:shadow-[#0c988d]/50 transition-all duration-300 hover:scale-105 active:scale-95"
+            className="group relative inline-flex items-center justify-center px-9 py-3 text-lg font-semibold text-white bg-white/15 backdrop-blur-md rounded-full overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.18)] hover:shadow-[0_8px_48px_rgba(255,255,255,0.13)] transition-all duration-300 hover:scale-105 active:scale-95 border border-transparent before:content-[''] before:absolute before:inset-0 before:rounded-full before:pointer-events-none before:border-[1.5px] before:border-solid before:border-white/20 before:opacity-60 before:bg-gradient-to-br before:from-white/30 before:via-white/5 before:to-white/20 before:blur-[1px] before:z-10"
           >
-            <span className="relative z-10">Get Started</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#09867e] to-[#0c988d] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <span className="relative z-20">Get Started</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/20 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
           </button>
 
           {/* Features */}
