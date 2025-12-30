@@ -5,22 +5,31 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged,
+  type User,
 } from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
 import { setAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 import Link from "next/link";
+import ToastContainer from "@/components/Toast";
 
 export default function LoginPage() {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Redirect to dashboard if already logged in with valid token
+  // Instantly redirect if already logged in
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/dashboard");
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        // Only block /login access if already authenticated
+        // But after successful login, always go to dashboard
+        if (window.location.pathname === "/login") {
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("lastPath");
+          }
+          router.replace("/dashboard");
+        }
       }
     });
     return () => unsub();
@@ -64,6 +73,10 @@ export default function LoginPage() {
             setAppToken(data.token);
           }
           showToast("Sign in successful!", "success");
+          // Remove stored lastPath so we don't reuse it later; then go to dashboard
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("lastPath");
+          }
           router.push("/dashboard");
         }
       } catch (backendErr) {
@@ -282,6 +295,7 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+      <ToastContainer />
     </main>
   );
 }

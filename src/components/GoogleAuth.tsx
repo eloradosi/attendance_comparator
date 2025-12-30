@@ -119,7 +119,10 @@ export default function GoogleAuth({
     try {
       await signOut(auth);
       clearAppToken();
-      // Redirect to dashboard after sign out
+      // Remove stored lastPath then redirect to dashboard after sign out
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("lastPath");
+      }
       router.push("/dashboard");
       // TODO: Call backend logout endpoint if needed
       // await apiFetch('/api/auth/logout', { method: 'POST' });

@@ -44,11 +44,11 @@ export default function ToastContainer() {
         <div
           key={t.id}
           className={`max-w-xs w-full px-4 py-2 rounded shadow-md text-sm ${
-            t.type === "success"
+            t.type === "success" || t.type === "info"
               ? "bg-green-50 text-green-800"
               : t.type === "error"
               ? "bg-red-50 text-red-800"
-              : "bg-blue-50 text-blue-800"
+              : "bg-green-50 text-green-800"
           }`}
         >
           {t.message}

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { showToast } from "@/components/Toast";
 
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,6 +21,9 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(
+    dateRange
+  );
   const [isDarkMode, setIsDarkMode] = React.useState(
     typeof window !== "undefined" &&
       sessionStorage.getItem("isDarkMode") === "true"
@@ -31,6 +35,42 @@ export function DateRangePicker({
     }, 500);
     return () => clearInterval(id);
   }, []);
+
+  // Sync tempRange with dateRange when it changes externally
+  React.useEffect(() => {
+    setTempRange(dateRange);
+  }, [dateRange]);
+
+  const handleApply = () => {
+    if (tempRange?.from && tempRange?.to) {
+      onDateRangeChange(tempRange);
+      setIsOpen(false);
+    } else if (tempRange?.from || tempRange?.to) {
+      showToast(
+        "Please select both start date and end date for date range search",
+        "error"
+      );
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  const handleClear = () => {
+    setTempRange(undefined);
+    onDateRangeChange(undefined);
+    setIsOpen(false);
+  };
+
+  const handleDateSelect = (range: DateRange | undefined) => {
+    setTempRange(range);
+    // Notifikasi jika hanya pilih 1 tanggal
+    if (range?.from && !range?.to) {
+      showToast(
+        "For single date search, click the same date twice (start date = end date)",
+        "info"
+      );
+    }
+  };
 
   return (
     <div className={cn("relative", className)}>
@@ -76,17 +116,14 @@ export function DateRangePicker({
           >
             <Calendar
               mode="range"
-              selected={dateRange}
-              onSelect={onDateRangeChange}
+              selected={tempRange}
+              onSelect={handleDateSelect}
               numberOfMonths={1}
               className="rounded-md"
             />
             <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-white/10">
               <button
-                onClick={() => {
-                  onDateRangeChange(undefined);
-                  setIsOpen(false);
-                }}
+                onClick={handleClear}
                 className={`px-3 py-1.5 text-sm border rounded ${
                   isDarkMode
                     ? "hover:bg-white/5 text-gray-300 border-gray-700"
@@ -96,7 +133,7 @@ export function DateRangePicker({
                 Clear
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleApply}
                 className={`px-3 py-1.5 text-sm rounded ${
                   isDarkMode
                     ? "bg-green-700 text-white hover:bg-green-800"

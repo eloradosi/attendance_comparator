@@ -56,6 +56,9 @@ export default function Sidebar() {
     try {
       await signOut(auth);
       clearAppToken();
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("lastPath");
+      }
       router.push("/login");
     } catch (err) {
       console.error("Sign-out failed:", err);
