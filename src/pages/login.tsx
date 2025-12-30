@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import getIdToken from "@/lib/getIdToken";
-import { setAppToken, isTokenExpired, setTokenExpiry } from "@/lib/api";
+import { setAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 import Link from "next/link";
 
@@ -19,7 +19,7 @@ export default function LoginPage() {
   // Redirect to dashboard if already logged in with valid token
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (user && !isTokenExpired()) {
+      if (user) {
         router.replace("/dashboard");
       }
     });
@@ -62,10 +62,6 @@ export default function LoginPage() {
           // Store backend session token
           if (data?.token) {
             setAppToken(data.token);
-          }
-          // Store expiry time if provided
-          if (data?.expiryTime) {
-            setTokenExpiry(data.expiryTime);
           }
           showToast("Sign in successful!", "success");
           router.push("/dashboard");
