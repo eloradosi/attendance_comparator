@@ -20,6 +20,7 @@ export default function LoginPage() {
 
   // Check auth immediately - don't render anything if already logged in
   const [shouldRender, setShouldRender] = useState(false);
+  const [isManualLogin, setIsManualLogin] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -35,15 +36,15 @@ export default function LoginPage() {
 
     checkAuth();
 
-    // Listen for auth state changes
+    // Listen for auth state changes (but skip if manual login in progress)
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (u) {
+      if (u && !isManualLogin) {
         const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
         router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
       }
     });
     return () => unsub();
-  }, [router]);
+  }, [router, isManualLogin]);
 
   // Don't render anything until we confirm user is not authenticated
   if (!shouldRender) {
@@ -52,6 +53,7 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setIsLoading(true);
+    setIsManualLogin(true); // Prevent onAuthStateChanged from interfering
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
@@ -92,8 +94,8 @@ export default function LoginPage() {
           if (typeof window !== "undefined") {
             sessionStorage.removeItem("lastPath");
           }
-          // Force a hard navigation to ensure token is ready
-          window.location.href = "/dashboard";
+          // Use router.push for smooth navigation
+          router.push("/dashboard");
         }
       } catch (backendErr) {
         console.error("Error calling backend login:", backendErr);
@@ -104,6 +106,7 @@ export default function LoginPage() {
       showToast(err.message || "Sign in failed", "error");
     } finally {
       setIsLoading(false);
+      setIsManualLogin(false);
     }
   };
 
