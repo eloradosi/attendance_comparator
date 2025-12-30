@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
-import { isTokenExpired } from "@/lib/api";
 
 export default function IndexPage() {
   const router = useRouter();
@@ -10,11 +9,11 @@ export default function IndexPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (user && !isTokenExpired()) {
-        // User is logged in with valid token, go to dashboard
+      if (user) {
+        // User is logged in, go to dashboard
         router.replace("/dashboard");
       } else {
-        // No user or token expired, go to login
+        // No user, go to login
         router.replace("/login");
       }
       setChecking(false);

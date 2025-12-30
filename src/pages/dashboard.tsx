@@ -154,27 +154,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Check token expiry periodically and auto sign-out if expired
-  useEffect(() => {
-    if (!user) return;
-
-    const checkExpiry = async () => {
-      const { isTokenExpired } = await import("@/lib/api");
-      if (isTokenExpired()) {
-        showToast("Session expired. Please sign in again.", "error");
-        await handleSignOut();
-      }
-    };
-
-    // Check immediately
-    checkExpiry();
-
-    // Check every 30 seconds
-    const interval = setInterval(checkExpiry, 30000);
-
-    return () => clearInterval(interval);
-  }, [user]);
-
   // Notify loader that navigation finished when this page mounts
   useEffect(() => {
     try {
