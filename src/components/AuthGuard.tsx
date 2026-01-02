@@ -76,19 +76,24 @@ export default function AuthGuard({ children }: PropsWithChildren) {
             // Check backend connectivity
             try {
               const apiUrl = await getApiUrl();
-              const testUrl = `${apiUrl.replace(/\/$/, "")}/api/auth/health`;
-              const response = await fetch(testUrl, { 
-                method: "GET",
-                headers: { "Content-Type": "application/json" }
+              // Test backend connectivity using existing endpoint
+              const testUrl = `${apiUrl.replace(
+                /\/$/,
+                ""
+              )}/api/logbook/my?page=0&size=1`;
+              const response = await fetch(testUrl, {
+                method: "HEAD", // HEAD request lebih ringan, hanya cek connectivity
+                signal: AbortSignal.timeout(5000), // 5 second timeout
               });
-              
-              if (!response.ok) {
-                throw new Error("Backend not reachable");
+
+              // Accept 200 OK or 401 Unauthorized (backend reachable, just need auth)
+              if (!response.ok && response.status !== 401) {
+                throw new Error(`Backend returned ${response.status}`);
               }
-              
+
               // Backend OK, proceed
               setBackendError(null);
-              
+
               // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
               if (pathname === "/login") {
                 const lastPath =
@@ -106,7 +111,9 @@ export default function AuthGuard({ children }: PropsWithChildren) {
             } catch (backendErr) {
               // Backend connectivity failed
               console.error("Backend connectivity check failed:", backendErr);
-              setBackendError("Cannot connect to backend API. Please check your configuration or try again later.");
+              setBackendError(
+                "Cannot connect to backend API. Please check your configuration or try again later."
+              );
               setReady(true); // Show error instead of loading forever
             }
           }
@@ -141,11 +148,23 @@ export default function AuthGuard({ children }: PropsWithChildren) {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100">
         <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Backend Connection Error</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Backend Connection Error
+          </h2>
           <p className="text-gray-600 mb-6">{backendError}</p>
           <button
             onClick={async () => {
