@@ -82,12 +82,12 @@ export default function AuthGuard({ children }: PropsWithChildren) {
                 ""
               )}/api/logbook/my?page=0&size=1`;
               const response = await fetch(testUrl, {
-                method: "HEAD", // HEAD request lebih ringan, hanya cek connectivity
+                method: "GET", // Use GET instead of HEAD to avoid CORS issues
                 signal: AbortSignal.timeout(5000), // 5 second timeout
               });
 
               // Accept 200 OK or 401 Unauthorized (backend reachable, just need auth)
-              if (!response.ok && response.status !== 401) {
+              if (!response.ok && response.status !== 401 && response.status !== 403) {
                 throw new Error(`Backend returned ${response.status}`);
               }
 
