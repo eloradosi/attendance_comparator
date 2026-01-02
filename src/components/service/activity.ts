@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAppToken } from "@/lib/api";
+import { getApiUrl } from "@/lib/runtimeConfig";
 
 export interface ActivityLog {
   id: string;
@@ -28,7 +29,7 @@ export async function fetchMyActivities(
 ): Promise<ActivityLog[]> {
   const { page = 0, size = 100, cancelToken } = params;
 
-  const backend = process.env.NEXT_PUBLIC_API_URL || "";
+  const backend = await getApiUrl();
   const url = backend
     ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=${page}&size=${size}`
     : `/api/logbook/my?page=${page}&size=${size}`;
@@ -81,7 +82,7 @@ export async function saveActivity(log: ActivityLog): Promise<void> {
   }
   // idle status only needs date and status
 
-  const backend = process.env.NEXT_PUBLIC_API_URL || "";
+  const backend = await getApiUrl();
   const url = backend
     ? `${backend.replace(/\/$/, "")}/api/logbook/save`
     : `/api/logbook/save`;

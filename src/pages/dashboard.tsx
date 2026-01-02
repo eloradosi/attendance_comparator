@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { auth, getFirebaseAuth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
