@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FileText, Clipboard, Users, TrendingUp, LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { clearAppToken } from "@/lib/api";
 
 export default function Sidebar() {
@@ -54,7 +54,8 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      const authInstance = await getFirebaseAuth();
+      await signOut(authInstance);
       clearAppToken();
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("lastPath");
