@@ -72,49 +72,69 @@ export default function AuthGuard({ children }: PropsWithChildren) {
             // If not logged in, redirect to login page; preserve intended path
             const redirectTo = encodeURIComponent(pathname || "/");
             router.replace(`/login?next=${redirectTo}`);
+            // Clear backend check cache on logout
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("backendCheckPassed");
+            }
           } else {
-            // Check backend connectivity
-            try {
-              const apiUrl = await getApiUrl();
-              // Test backend connectivity using existing endpoint
-              const testUrl = `${apiUrl.replace(
-                /\/$/,
-                ""
-              )}/api/logbook/my?page=0&size=1`;
-              const response = await fetch(testUrl, {
-                method: "GET", // Use GET instead of HEAD to avoid CORS issues
-                signal: AbortSignal.timeout(5000), // 5 second timeout
-              });
+            // Check backend connectivity ONLY ONCE per session
+            const backendChecked = typeof window !== "undefined" 
+              ? sessionStorage.getItem("backendCheckPassed")
+              : null;
 
-              // Accept 200 OK or 401 Unauthorized (backend reachable, just need auth)
-              if (!response.ok && response.status !== 401 && response.status !== 403) {
-                throw new Error(`Backend returned ${response.status}`);
-              }
+            if (!backendChecked) {
+              // First time check - test backend connectivity
+              try {
+                const apiUrl = await getApiUrl();
+                // Test backend connectivity using existing endpoint
+                const testUrl = `${apiUrl.replace(
+                  /\/$/,
+                  ""
+                )}/api/logbook/my?page=0&size=1`;
+                const response = await fetch(testUrl, {
+                  method: "GET",
+                  signal: AbortSignal.timeout(5000), // 5 second timeout
+                });
 
-              // Backend OK, proceed
-              setBackendError(null);
-
-              // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
-              if (pathname === "/login") {
-                const lastPath =
-                  typeof window !== "undefined"
-                    ? sessionStorage.getItem("lastPath")
-                    : null;
-                if (lastPath && lastPath !== "/login") {
-                  router.replace(lastPath);
-                } else {
-                  router.replace("/dashboard");
+                // Accept 200 OK or 401 Unauthorized (backend reachable, just need auth)
+                if (
+                  !response.ok &&
+                  response.status !== 401 &&
+                  response.status !== 403
+                ) {
+                  throw new Error(`Backend returned ${response.status}`);
                 }
-              } else {
+
+                // Backend OK - cache result
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("backendCheckPassed", "true");
+                }
+                setBackendError(null);
+              } catch (backendErr) {
+                // Backend connectivity failed
+                console.error("Backend connectivity check failed:", backendErr);
+                setBackendError(
+                  "Cannot connect to backend API. Please check your configuration or try again later."
+                );
                 setReady(true);
+                return; // Stop here if backend check failed
               }
-            } catch (backendErr) {
-              // Backend connectivity failed
-              console.error("Backend connectivity check failed:", backendErr);
-              setBackendError(
-                "Cannot connect to backend API. Please check your configuration or try again later."
-              );
-              setReady(true); // Show error instead of loading forever
+            }
+
+            // Backend check passed (either now or previously cached)
+            // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
+            if (pathname === "/login") {
+              const lastPath =
+                typeof window !== "undefined"
+                  ? sessionStorage.getItem("lastPath")
+                  : null;
+              if (lastPath && lastPath !== "/login") {
+                router.replace(lastPath);
+              } else {
+                router.replace("/dashboard");
+              }
+            } else {
+              setReady(true);
             }
           }
         });
