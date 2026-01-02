@@ -1,25 +1,28 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 
 export default function IndexPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is logged in, go to dashboard
-        router.replace("/dashboard");
-      } else {
-        // No user, go to login
-        router.replace("/login");
-      }
-      setChecking(false);
-    });
-
-    return () => unsub();
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const authInstance = await getFirebaseAuth();
+      unsub = onAuthStateChanged(authInstance, (user) => {
+        if (user) {
+          router.replace("/dashboard");
+        } else {
+          router.replace("/login");
+        }
+        setChecking(false);
+      });
+    })();
+    return () => {
+      if (unsub) unsub();
+    };
   }, [router]);
 
   if (checking) {

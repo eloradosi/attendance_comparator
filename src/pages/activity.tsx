@@ -6,7 +6,7 @@ import ActivityList from "@/components/activity/ActivityList";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
 import ToastContainer from "@/components/Toast";
-import { auth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useSidebar } from "@/hooks/useSidebar";
@@ -32,8 +32,14 @@ export default function ActivityPage() {
   const isAfterMidnight = now.getHours() >= 0; // rule sudah aktif setelah 00:00
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const authInstance = await getFirebaseAuth();
+      unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
+    })();
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   useEffect(() => {

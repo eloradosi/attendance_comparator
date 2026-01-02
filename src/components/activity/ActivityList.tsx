@@ -5,7 +5,7 @@ import axios from "axios";
 import { showToast } from "@/components/Toast";
 import ActivityForm from "@/components/activity/ActivityForm";
 import Modal from "@/components/Modal";
-import { auth } from "@/lib/firebaseClient";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { Edit } from "lucide-react";
 import {
   fetchMyActivities,
@@ -94,7 +94,22 @@ export default function ActivityList({ onActivityAdded }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  const uid = auth.currentUser?.uid;
+  const [uid, setUid] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        if (isMounted) setUid(authInstance.currentUser?.uid);
+      } catch (e) {
+        setUid(undefined);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Initial load
   useEffect(() => {
