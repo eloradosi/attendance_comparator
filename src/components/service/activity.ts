@@ -99,7 +99,7 @@ export async function saveActivity(log: ActivityLog): Promise<void> {
  * Delete activity log from backend API
  */
 export async function deleteActivity(id: string): Promise<void> {
-  const backend = process.env.NEXT_PUBLIC_API_URL || "";
+  const backend = await getApiUrl();
   const url = backend
     ? `${backend.replace(/\/$/, "")}/api/logbook/${id}`
     : `/api/logbook/${id}`;

@@ -3,7 +3,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from "@/lib/firebaseClient";
+import { auth, getFirebaseAuth } from "@/lib/firebaseClient";
 import { clearAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 
@@ -28,7 +28,12 @@ export default function AuthGuard({ children }: PropsWithChildren) {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(async () => {
         showToast("Logged out due to inactivity", "error");
-        await signOut(auth);
+        try {
+          const authInstance = await getFirebaseAuth();
+          await signOut(authInstance);
+        } catch (error) {
+          console.error("Sign out failed:", error);
+        }
         clearAppToken();
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("lastPath");
@@ -55,29 +60,44 @@ export default function AuthGuard({ children }: PropsWithChildren) {
   }, [router]);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // If not logged in, redirect to login page; preserve intended path
-        const redirectTo = encodeURIComponent(pathname || "/");
-        router.replace(`/login?next=${redirectTo}`);
-      } else {
-        // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
-        if (pathname === "/login") {
-          const lastPath =
-            typeof window !== "undefined"
-              ? sessionStorage.getItem("lastPath")
-              : null;
-          if (lastPath && lastPath !== "/login") {
-            router.replace(lastPath);
+    let unsub: (() => void) | undefined;
+
+    const setupAuthListener = async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        unsub = onAuthStateChanged(authInstance, (user) => {
+          if (!user) {
+            // If not logged in, redirect to login page; preserve intended path
+            const redirectTo = encodeURIComponent(pathname || "/");
+            router.replace(`/login?next=${redirectTo}`);
           } else {
-            router.replace("/dashboard");
+            // If user is authenticated and trying to access /login, redirect to lastPath or dashboard
+            if (pathname === "/login") {
+              const lastPath =
+                typeof window !== "undefined"
+                  ? sessionStorage.getItem("lastPath")
+                  : null;
+              if (lastPath && lastPath !== "/login") {
+                router.replace(lastPath);
+              } else {
+                router.replace("/dashboard");
+              }
+            } else {
+              setReady(true);
+            }
           }
-        } else {
-          setReady(true);
-        }
+        });
+      } catch (error) {
+        console.error("Auth listener setup failed:", error);
+        setReady(true);
       }
-    });
-    return () => unsub();
+    };
+
+    setupAuthListener();
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, [router, pathname]);
 
   if (!ready) {

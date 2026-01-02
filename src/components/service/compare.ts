@@ -1,4 +1,5 @@
 import apiFetch from "@/lib/api";
+import { getApiUrl } from "@/lib/runtimeConfig";
 
 export interface CompareFilesParams {
   fileA: File;
@@ -48,7 +49,8 @@ export async function compareFiles(params: CompareFilesParams): Promise<any> {
   }
 
   try {
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+    const apiUrl = await getApiUrl();
+    const baseUrl = apiUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/api/attendance/compare`;
 
     // Save timesheet PDF for watermarking later

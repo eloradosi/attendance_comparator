@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebaseClient";
+import { auth, getFirebaseAuth } from "@/lib/firebaseClient";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -14,6 +14,7 @@ import {
 import getIdToken from "@/lib/getIdToken";
 import { showToast } from "@/components/Toast";
 import apiFetch, { setAppToken, clearAppToken } from "@/lib/api";
+import { getApiUrl } from "@/lib/runtimeConfig";
 
 export default function GoogleAuth({
   mode = "full",
@@ -24,8 +25,22 @@ export default function GoogleAuth({
   const router = useRouter();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
+    let unsub: (() => void) | undefined;
+
+    const setupAuthListener = async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
+      } catch (error) {
+        console.error("Auth listener setup failed:", error);
+      }
+    };
+
+    setupAuthListener();
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const handleSignIn = async () => {
@@ -33,11 +48,12 @@ export default function GoogleAuth({
     provider.setCustomParameters({ prompt: "select_account" });
 
     try {
+      const authInstance = await getFirebaseAuth();
       // Try popup first (preferred UX). In some environments (incognito,
       // strict cookie settings, or popup blockers) this will fail — catch
       // the error and fallback to redirect-based sign-in which works more
       // reliably across environments.
-      const cred = await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(authInstance, provider);
 
       // Obtain a Firebase ID token (JWT) that we'll send to our backend
       // so the backend can verify the user identity and return an app
@@ -45,8 +61,7 @@ export default function GoogleAuth({
       const idToken = await getIdToken(false);
 
       try {
-        const backend =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        const backend = await getApiUrl();
         const resp = await apiFetch(
           `${backend.replace(/\/$/, "")}/api/auth/login`,
           {
@@ -99,7 +114,8 @@ export default function GoogleAuth({
         try {
           // Inform the user that we'll fall back to a redirect
           showToast("Popup blocked — falling back to redirect sign-in", "info");
-          await signInWithRedirect(auth, provider);
+          const authInstance = await getFirebaseAuth();
+          await signInWithRedirect(authInstance, provider);
         } catch (rErr) {
           console.error("Redirect sign-in also failed:", rErr);
           alert(
@@ -117,7 +133,8 @@ export default function GoogleAuth({
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      const authInstance = await getFirebaseAuth();
+      await signOut(authInstance);
       clearAppToken();
       // Remove stored lastPath then redirect to dashboard after sign out
       if (typeof window !== "undefined") {

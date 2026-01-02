@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { auth } from "@/lib/firebaseClient";
+import { auth, getFirebaseAuth } from "@/lib/firebaseClient";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -10,6 +10,7 @@ import {
 import getIdToken from "@/lib/getIdToken";
 import { setAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
+import { getApiUrl } from "@/lib/runtimeConfig";
 import Link from "next/link";
 import ToastContainer from "@/components/Toast";
 
@@ -23,27 +24,50 @@ export default function LoginPage() {
   const [isManualLogin, setIsManualLogin] = useState(false);
 
   useEffect(() => {
-    const checkAuth = () => {
-      if (auth.currentUser) {
-        // Already logged in, redirect immediately
-        const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
-        router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
-        return;
+    const checkAuth = async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        if (authInstance.currentUser) {
+          // Already logged in, redirect immediately
+          const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
+          router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
+          return;
+        }
+        // Not logged in, allow rendering
+        setShouldRender(true);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setShouldRender(true);
       }
-      // Not logged in, allow rendering
-      setShouldRender(true);
     };
 
     checkAuth();
 
     // Listen for auth state changes (but skip if manual login in progress)
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (u && !isManualLogin) {
-        const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
-        router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
+    const setupAuthListener = async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        const unsub = onAuthStateChanged(authInstance, (u) => {
+          if (u && !isManualLogin) {
+            const lastPath = sessionStorage.getItem("lastPath") || "/dashboard";
+            router.replace(lastPath !== "/login" ? lastPath : "/dashboard");
+          }
+        });
+        return unsub;
+      } catch (error) {
+        console.error("Auth listener setup failed:", error);
+        return () => {};
       }
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    setupAuthListener().then((unsub) => {
+      unsubscribe = unsub;
     });
-    return () => unsub();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [router, isManualLogin]);
 
   // Don't render anything until we confirm user is not authenticated
@@ -55,16 +79,16 @@ export default function LoginPage() {
     setIsLoading(true);
     setIsManualLogin(true); // Prevent onAuthStateChanged from interfering
     try {
+      const authInstance = await getFirebaseAuth();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
 
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(authInstance, provider);
       const idToken = await getIdToken(false);
 
       // Call backend login endpoint to establish session
       try {
-        const backend =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        const backend = await getApiUrl();
         const response = await fetch(
           `${backend.replace(/\/$/, "")}/api/auth/login`,
           {

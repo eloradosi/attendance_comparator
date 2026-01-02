@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { auth } from "@/lib/firebaseClient";
+import { auth, getFirebaseAuth } from "@/lib/firebaseClient";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -148,13 +148,28 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
+    let unsub: (() => void) | undefined;
+
+    const setupAuthListener = async () => {
+      try {
+        const authInstance = await getFirebaseAuth();
+        unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
+      } catch (error) {
+        console.error("Auth listener setup failed:", error);
+      }
+    };
+
+    setupAuthListener();
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      const authInstance = await getFirebaseAuth();
+      await signOut(authInstance);
       clearAppToken();
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("lastPath");

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAppToken } from "@/lib/api";
+import { getApiUrl } from "@/lib/runtimeConfig";
 import { DateRange } from "react-day-picker";
 
 export type ActivityRow = {
@@ -31,7 +32,7 @@ export async function fetchAllActivities(
 ): Promise<ActivityRow[]> {
   const { dateRange, cancelToken } = params;
 
-  const backend = process.env.NEXT_PUBLIC_API_URL || "";
+  const backend = await getApiUrl();
 
   // Build query params
   const queryParams = new URLSearchParams();
