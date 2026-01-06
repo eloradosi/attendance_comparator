@@ -38,6 +38,7 @@ import ToastContainer from "@/components/Toast";
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [totalData, setTotalData] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const sidebarExpanded = useSidebar();
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -101,8 +102,8 @@ export default function DashboardPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
-  // Pagination
-  const [page, setPage] = useState(1);
+  // Pagination (0-based for backend)
+  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
   const users = useMemo(() => {
@@ -115,34 +116,22 @@ export default function DashboardPage() {
     return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
   }, [activities]);
 
-  const filteredRows = useMemo(() => {
-    if (!activities || activities.length === 0) return [];
-    return activities.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      const userKey = r.userEmail || r.uid || r.id;
-      if (userFilter !== "all" && userKey !== userFilter) return false;
-      if (todayOnly && r.date !== today) return false;
-      return true;
-    });
-  }, [activities, statusFilter, userFilter, todayOnly, today]);
+  // For server-side pagination, use activities directly (no client-side filtering)
+  const pagedRows = activities;
 
   useEffect(
-    () => setPage(1),
+    () => setPage(0),
     [statusFilter, userFilter, pageSize, dateRange, todayOnly]
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const pagedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(totalData / pageSize));
 
   const handleClearFilters = () => {
     setStatusFilter("all");
     setUserFilter("all");
     setTodayOnly(false);
     setDateRange(undefined);
-    setPage(1);
+    setPage(0);
     setStatusOpen(false);
     setUserOpen(false);
   };
@@ -258,17 +247,30 @@ export default function DashboardPage() {
 
     const loadActivities = async () => {
       try {
-        const mapped = await fetchActivities({
+        console.log("Dashboard - Fetching with params:", {
+          page,
+          size: pageSize,
           dateRange,
+        });
+        const response = await fetchActivities({
+          dateRange,
+          page,
+          size: pageSize,
           cancelToken: source.token,
         });
-        setActivities(mapped);
+        console.log("Dashboard - Response:", {
+          totalData: response.totalData,
+          dataLength: response.data.length,
+        });
+        setActivities(response.data);
+        setTotalData(response.totalData);
       } catch (err: any) {
         if (axios.isCancel(err)) {
           return;
         }
         console.error("Error fetching activities:", err);
         setActivities([]);
+        setTotalData(0);
       }
     };
 
@@ -277,7 +279,7 @@ export default function DashboardPage() {
     return () => {
       source.cancel();
     };
-  }, [user, dateRange]);
+  }, [user, dateRange, page, pageSize]);
 
   const handleLogIdToken = async () => {
     try {
@@ -565,12 +567,7 @@ export default function DashboardPage() {
                     </label>
                     <DateRangePicker
                       dateRange={dateRange}
-                      onDateRangeChange={(range) => {
-                        setDateRange(range);
-                        if (range) {
-                          setPage(1);
-                        }
-                      }}
+                      onDateRangeChange={setDateRange}
                       className="w-64"
                     />
                   </div>
@@ -584,7 +581,6 @@ export default function DashboardPage() {
                         // Set dateRange ke hari ini agar trigger fetch API
                         const today = new Date();
                         setDateRange({ from: today, to: today });
-                        setPage(1);
                       }}
                       className={`inline-flex items-center text-sm font-semibold gap-2 px-3 py-2 rounded-md transition ${
                         isDarkMode
@@ -621,7 +617,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {filteredRows.length === 0 ? (
+              {pagedRows.length === 0 ? (
                 <div
                   className={`text-sm ${
                     isDarkMode ? "text-white" : "text-gray-500"
@@ -754,12 +750,9 @@ export default function DashboardPage() {
                           isDarkMode ? "text-gray-400" : "text-gray-600"
                         }`}
                       >
-                        Showing{" "}
-                        {filteredRows.length === 0
-                          ? 0
-                          : (page - 1) * pageSize + 1}
-                        –{Math.min(page * pageSize, filteredRows.length)} of{" "}
-                        {filteredRows.length}
+                        Showing {totalData === 0 ? 0 : page * pageSize + 1}–
+                        {Math.min((page + 1) * pageSize, totalData)} of{" "}
+                        {totalData}
                       </div>
                       <div className="flex items-center gap-3">
                         <div
@@ -777,8 +770,9 @@ export default function DashboardPage() {
                             }))}
                             value={String(pageSize)}
                             onChange={(v) => {
+                              console.log("Dashboard - PageSize changed to", v);
                               setPageSize(Number(v));
-                              setPage(1);
+                              setPage(0);
                             }}
                             width="w-24"
                           />
@@ -792,12 +786,12 @@ export default function DashboardPage() {
                     >
                       <div className="inline-flex items-center gap-2">
                         <button
-                          onClick={() => setPage(1)}
-                          disabled={page === 1}
+                          onClick={() => setPage(0)}
+                          disabled={page === 0}
                           aria-label="First page"
                           title="First page"
                           className={`p-2 rounded border ${
-                            page === 1
+                            page === 0
                               ? isDarkMode
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
@@ -809,12 +803,12 @@ export default function DashboardPage() {
                           <ChevronsLeft className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          disabled={page === 1}
+                          onClick={() => setPage((p) => Math.max(0, p - 1))}
+                          disabled={page === 0}
                           aria-label="Previous page"
                           title="Previous page"
                           className={`p-2 rounded border ${
-                            page === 1
+                            page === 0
                               ? isDarkMode
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
@@ -829,8 +823,8 @@ export default function DashboardPage() {
                         {/* page number buttons (show up to 5 centered on current) */}
                         {(() => {
                           const pages: number[] = [];
-                          const start = Math.max(1, page - 2);
-                          const end = Math.min(totalPages, page + 2);
+                          const start = Math.max(0, page - 2);
+                          const end = Math.min(totalPages - 1, page + 2);
                           for (let i = start; i <= end; i++) pages.push(i);
                           return pages.map((p) => (
                             <button
@@ -845,20 +839,20 @@ export default function DashboardPage() {
                                   : "hover:bg-gray-50"
                               }`}
                             >
-                              {p}
+                              {p + 1}
                             </button>
                           ));
                         })()}
 
                         <button
                           onClick={() =>
-                            setPage((p) => Math.min(totalPages, p + 1))
+                            setPage((p) => Math.min(totalPages - 1, p + 1))
                           }
-                          disabled={page === totalPages}
+                          disabled={page === totalPages - 1}
                           aria-label="Next page"
                           title="Next page"
                           className={`p-2 rounded border ${
-                            page === totalPages
+                            page === totalPages - 1
                               ? isDarkMode
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
@@ -870,12 +864,12 @@ export default function DashboardPage() {
                           <ChevronRight className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setPage(totalPages)}
-                          disabled={page === totalPages}
+                          onClick={() => setPage(totalPages - 1)}
+                          disabled={page === totalPages - 1}
                           aria-label="Last page"
                           title="Last page"
                           className={`p-2 rounded border ${
-                            page === totalPages
+                            page === totalPages - 1
                               ? isDarkMode
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"

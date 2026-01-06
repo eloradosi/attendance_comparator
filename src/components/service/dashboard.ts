@@ -22,20 +22,31 @@ export type ActivityRow = {
 export interface FetchActivitiesParams {
   dateRange?: DateRange;
   cancelToken?: any;
+  page?: number;
+  size?: number;
+}
+
+export interface FetchActivitiesResponse {
+  data: ActivityRow[];
+  totalData: number;
+  page: number;
+  size: number;
 }
 
 /**
- * Fetch activities from backend API with optional date range filter
+ * Fetch activities from backend API with optional date range filter and pagination
  */
 export async function fetchActivities(
   params: FetchActivitiesParams = {}
-): Promise<ActivityRow[]> {
-  const { dateRange, cancelToken } = params;
+): Promise<FetchActivitiesResponse> {
+  const { dateRange, cancelToken, page = 0, size = 10 } = params;
 
   const backend = await getApiUrl();
   const queryParams = new URLSearchParams();
   queryParams.append("sortBy", "date");
   queryParams.append("sortDir", "desc");
+  queryParams.append("page", page.toString());
+  queryParams.append("size", size.toString());
 
   if (dateRange?.from) {
     const start = dateRange.from;
@@ -79,5 +90,10 @@ export async function fetchActivities(
     updatedAt: it.updatedAt,
   }));
 
-  return mapped;
+  return {
+    data: mapped,
+    totalData: resp.data.totalData || 0,
+    page: resp.data.page || 0,
+    size: resp.data.size || size,
+  };
 }

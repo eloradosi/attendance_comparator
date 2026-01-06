@@ -24,6 +24,8 @@ import {
 
 export default function AllActivitiesPage() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
+  const [totalData, setTotalData] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -76,7 +78,7 @@ export default function AllActivitiesPage() {
   const [userOpen, setUserOpen] = useState(false);
 
   // Pagination
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0); // Backend uses 0-based page index
   const [pageSize, setPageSize] = useState(10);
 
   const users = useMemo(() => {
@@ -90,47 +92,54 @@ export default function AllActivitiesPage() {
     return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
   }, [rows]);
 
-  const filteredRows = useMemo(() => {
-    if (!rows || rows.length === 0) return [];
-    return rows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      const userKey = r.userEmail || r.uid || r.id;
-      if (userFilter !== "all" && userKey !== userFilter) return false;
-      if (todayOnly && r.date !== today) return false;
-      return true;
-    });
-  }, [rows, statusFilter, userFilter, todayOnly, today]);
+  // For server-side pagination, filters should be sent to backend
+  // Remove client-side filtering - use rows directly
+  const pagedRows = rows;
 
   // Reset page when filters change
   useEffect(
-    () => setPage(1),
+    () => setPage(0),
     [statusFilter, userFilter, pageSize, dateRange, todayOnly]
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const pagedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(totalData / pageSize));
 
   useEffect(() => {
+    console.log("useEffect triggered with:", { page, pageSize, dateRange });
     if (typeof window === "undefined") return;
 
     const source = axios.CancelToken.source();
 
     const loadData = async () => {
+      setIsLoading(true);
       try {
-        const mapped = await fetchAllActivities({
+        console.log("Fetching with params:", {
+          page,
+          size: pageSize,
           dateRange,
+        });
+        const response = await fetchAllActivities({
+          dateRange,
+          page,
+          size: pageSize,
           cancelToken: source.token,
         });
-        setRows(mapped);
+        console.log("Response:", {
+          totalData: response.totalData,
+          dataLength: response.data.length,
+          size: response.size,
+        });
+        setRows(response.data);
+        setTotalData(response.totalData);
       } catch (err: any) {
         if (axios.isCancel(err)) {
           return;
         }
         console.error("Error fetching dashboard logbook list:", err);
         setRows([]);
+        setTotalData(0);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -139,7 +148,7 @@ export default function AllActivitiesPage() {
     return () => {
       source.cancel();
     };
-  }, [dateRange]);
+  }, [dateRange, page, pageSize]);
 
   // Clear all filters helper
   const handleClearFilters = () => {
@@ -147,7 +156,7 @@ export default function AllActivitiesPage() {
     setUserFilter("all");
     setTodayOnly(false);
     setDateRange(undefined);
-    setPage(1);
+    setPage(0);
     setStatusOpen(false);
     setUserOpen(false);
   };
@@ -247,7 +256,7 @@ export default function AllActivitiesPage() {
                     setStatusFilter("idle");
                     setUserFilter("all");
                     setTodayOnly(true);
-                    setPage(1);
+                    setPage(0);
                     // open dropdowns closed for clarity
                     setStatusOpen(false);
                     setUserOpen(false);
@@ -274,7 +283,7 @@ export default function AllActivitiesPage() {
               </div>
             </div>
 
-            {filteredRows.length === 0 ? (
+            {rows.length === 0 ? (
               <div className="text-sm text-gray-500">
                 No activity logs found.
               </div>
@@ -353,12 +362,9 @@ export default function AllActivitiesPage() {
                 <div className="mt-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
                     <div className="text-sm text-gray-600">
-                      Showing{" "}
-                      {filteredRows.length === 0
-                        ? 0
-                        : (page - 1) * pageSize + 1}
-                      –{Math.min(page * pageSize, filteredRows.length)} of{" "}
-                      {filteredRows.length}
+                      Showing {totalData === 0 ? 0 : page * pageSize + 1}–
+                      {Math.min((page + 1) * pageSize, totalData)} of{" "}
+                      {totalData}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-sm text-gray-600">Rows per page</div>
@@ -370,8 +376,14 @@ export default function AllActivitiesPage() {
                           }))}
                           value={String(pageSize)}
                           onChange={(v) => {
+                            console.log(
+                              "PageSize changed from",
+                              pageSize,
+                              "to",
+                              v
+                            );
                             setPageSize(Number(v));
-                            setPage(1);
+                            setPage(0);
                           }}
                           width="w-24"
                         />
@@ -385,12 +397,12 @@ export default function AllActivitiesPage() {
                   >
                     <div className="inline-flex items-center gap-2">
                       <button
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
+                        onClick={() => setPage(0)}
+                        disabled={page === 0}
                         aria-label="First page"
                         title="First page"
                         className={`p-2 rounded border ${
-                          page === 1
+                          page === 0
                             ? "text-gray-400 border-gray-200"
                             : "hover:bg-gray-50"
                         }`}
@@ -398,12 +410,12 @@ export default function AllActivitiesPage() {
                         <ChevronsLeft className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={page === 0}
                         aria-label="Previous page"
                         title="Previous page"
                         className={`p-2 rounded border ${
-                          page === 1
+                          page === 0
                             ? "text-gray-400 border-gray-200"
                             : "hover:bg-gray-50"
                         }`}
@@ -414,8 +426,8 @@ export default function AllActivitiesPage() {
                       {/* page number buttons (show up to 5 centered on current) */}
                       {(() => {
                         const pages: number[] = [];
-                        const start = Math.max(1, page - 2);
-                        const end = Math.min(totalPages, page + 2);
+                        const start = Math.max(0, page - 2);
+                        const end = Math.min(totalPages - 1, page + 2);
                         for (let i = start; i <= end; i++) pages.push(i);
                         return pages.map((p) => (
                           <button
@@ -428,20 +440,20 @@ export default function AllActivitiesPage() {
                                 : "hover:bg-gray-50"
                             }`}
                           >
-                            {p}
+                            {p + 1}
                           </button>
                         ));
                       })()}
 
                       <button
                         onClick={() =>
-                          setPage((p) => Math.min(totalPages, p + 1))
+                          setPage((p) => Math.min(totalPages - 1, p + 1))
                         }
-                        disabled={page === totalPages}
+                        disabled={page === totalPages - 1}
                         aria-label="Next page"
                         title="Next page"
                         className={`p-2 rounded border ${
-                          page === totalPages
+                          page === totalPages - 1
                             ? "text-gray-400 border-gray-200"
                             : "hover:bg-gray-50"
                         }`}
@@ -449,12 +461,12 @@ export default function AllActivitiesPage() {
                         <ChevronRight className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setPage(totalPages)}
-                        disabled={page === totalPages}
+                        onClick={() => setPage(totalPages - 1)}
+                        disabled={page === totalPages - 1}
                         aria-label="Last page"
                         title="Last page"
                         className={`p-2 rounded border ${
-                          page === totalPages
+                          page === totalPages - 1
                             ? "text-gray-400 border-gray-200"
                             : "hover:bg-gray-50"
                         }`}
