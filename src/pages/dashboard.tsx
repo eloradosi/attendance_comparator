@@ -633,7 +633,7 @@ export default function DashboardPage() {
                             <th className="py-2 px-3 whitespace-nowrap">
                               Date
                             </th>
-                            <th className="py-2 px-3">Status</th>
+                            <th className="py-2 px-3 whitespace-nowrap w-24">Status</th>
                             <th className="py-2 px-3">Title / Reason</th>
                             <th className="py-2 px-3">Details</th>
                             <th className="py-2 px-3">Created</th>
