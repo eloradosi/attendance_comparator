@@ -106,24 +106,30 @@ export default function LoginPage() {
             response.status,
             await response.text()
           );
-          showToast("Backend login failed", "error");
-        } else {
-          const data = await response.json();
-          // Store backend session token
-          if (data?.token) {
-            setAppToken(data.token);
-          }
-          showToast("Sign in successful!", "success");
-          // Remove stored lastPath so we don't reuse it later
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem("lastPath");
-          }
-          // Use router.push for smooth navigation
-          router.push("/dashboard");
+          // Sign out from Firebase to prevent auto-redirect
+          await authInstance.signOut();
+          showToast("Backend login failed - check API configuration", "error");
+          return; // Block login on backend failure
         }
+
+        const data = await response.json();
+        // Store backend session token
+        if (data?.token) {
+          setAppToken(data.token);
+        }
+        showToast("Sign in successful!", "success");
+        // Remove stored lastPath so we don't reuse it later
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("lastPath");
+        }
+        // Use router.push for smooth navigation
+        router.push("/dashboard");
       } catch (backendErr) {
         console.error("Error calling backend login:", backendErr);
-        showToast("Backend login error", "error");
+        // Sign out from Firebase to prevent auto-redirect
+        await authInstance.signOut();
+        showToast("Backend unreachable - check API_URL configuration", "error");
+        return; // Block login on network/config error
       }
     } catch (err: any) {
       console.error("Sign-in error:", err);

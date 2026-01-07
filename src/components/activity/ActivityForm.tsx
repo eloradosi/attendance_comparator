@@ -36,7 +36,9 @@ export default function ActivityForm({
   const [percentEnd, setPercentEnd] = useState<number | "">(
     initial?.percentEnd ?? ""
   );
-  const [percentStartError, setPercentStartError] = useState<string | null>(null);
+  const [percentStartError, setPercentStartError] = useState<string | null>(
+    null
+  );
   const [percentEndError, setPercentEndError] = useState<string | null>(null);
   const [reason, setReason] = useState(initial?.reason || "");
   const [status, setStatus] = useState<ActivityStatus>(
@@ -103,11 +105,17 @@ export default function ActivityForm({
         alert("Please fix percentage errors before submitting");
         return;
       }
-      if (typeof percentStart === 'number' && (percentStart < 0 || percentStart > 100)) {
+      if (
+        typeof percentStart === "number" &&
+        (percentStart < 0 || percentStart > 100)
+      ) {
         alert("Start percentage must be between 0 and 100");
         return;
       }
-      if (typeof percentEnd === 'number' && (percentEnd < 0 || percentEnd > 100)) {
+      if (
+        typeof percentEnd === "number" &&
+        (percentEnd < 0 || percentEnd > 100)
+      ) {
         alert("End percentage must be between 0 and 100");
         return;
       }
@@ -413,8 +421,7 @@ export default function ActivityForm({
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
               <label className="text-sm text-gray-600">
-                Start %
-                <span className="text-red-500 ml-1 text-xs">*</span>
+                Start %<span className="text-red-500 ml-1 text-xs">*</span>
               </label>
               <input
                 type="number"
@@ -433,7 +440,9 @@ export default function ActivityForm({
                     setPercentStartError(null);
                   }
                 }}
-                className={`mt-1 block w-full border rounded px-3 py-2 ${percentStartError ? 'border-red-500' : ''}`}
+                className={`mt-1 block w-full border rounded px-3 py-2 ${
+                  percentStartError ? "border-red-500" : ""
+                }`}
               />
               {percentStartError ? (
                 <p className="text-xs text-red-500 mt-1">{percentStartError}</p>
@@ -443,8 +452,7 @@ export default function ActivityForm({
             </div>
             <div>
               <label className="text-sm text-gray-600">
-                End %
-                <span className="text-red-500 ml-1 text-xs">*</span>
+                End %<span className="text-red-500 ml-1 text-xs">*</span>
               </label>
               <input
                 type="number"
@@ -463,7 +471,9 @@ export default function ActivityForm({
                     setPercentEndError(null);
                   }
                 }}
-                className={`mt-1 block w-full border rounded px-3 py-2 ${percentEndError ? 'border-red-500' : ''}`}
+                className={`mt-1 block w-full border rounded px-3 py-2 ${
+                  percentEndError ? "border-red-500" : ""
+                }`}
               />
               {percentEndError ? (
                 <p className="text-xs text-red-500 mt-1">{percentEndError}</p>
