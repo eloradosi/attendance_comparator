@@ -36,6 +36,8 @@ export default function ActivityForm({
   const [percentEnd, setPercentEnd] = useState<number | "">(
     initial?.percentEnd ?? ""
   );
+  const [percentStartError, setPercentStartError] = useState<string | null>(null);
+  const [percentEndError, setPercentEndError] = useState<string | null>(null);
   const [reason, setReason] = useState(initial?.reason || "");
   const [status, setStatus] = useState<ActivityStatus>(
     initial?.status || "idle"
@@ -89,8 +91,24 @@ export default function ActivityForm({
         alert("Please enter an activity title for On duty");
         return;
       }
+      if (!detail.trim()) {
+        alert("Please enter activity detail for On duty");
+        return;
+      }
       if (percentStart === "" || percentEnd === "") {
         alert("Please enter start/end percentage for On duty");
+        return;
+      }
+      if (percentStartError || percentEndError) {
+        alert("Please fix percentage errors before submitting");
+        return;
+      }
+      if (typeof percentStart === 'number' && (percentStart < 0 || percentStart > 100)) {
+        alert("Start percentage must be between 0 and 100");
+        return;
+      }
+      if (typeof percentEnd === 'number' && (percentEnd < 0 || percentEnd > 100)) {
+        alert("End percentage must be between 0 and 100");
         return;
       }
       if (Number(percentStart) > Number(percentEnd)) {
@@ -279,7 +297,10 @@ export default function ActivityForm({
       <div className="mt-3">
         {status === "on_duty" && (
           <>
-            <label className="text-sm text-gray-600">Title</label>
+            <label className="text-sm text-gray-600">
+              Title
+              <span className="text-red-500 ml-1 text-xs">*</span>
+            </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -293,18 +314,25 @@ export default function ActivityForm({
       <div className="mt-3">
         {status === "on_duty" && (
           <>
-            <label className="text-sm text-gray-600">Detail</label>
+            <label className="text-sm text-gray-600">
+              Detail
+              <span className="text-red-500 ml-1 text-xs">*</span>
+            </label>
             <textarea
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
               className="mt-1 block w-full border rounded px-3 py-2 min-h-[80px]"
-              placeholder="Describe the activity (optional)"
+              placeholder="Describe the activity"
+              aria-required="true"
             />
           </>
         )}
         {status === "off_duty" && (
           <>
-            <label className="text-sm text-gray-600">Reason</label>
+            <label className="text-sm text-gray-600">
+              Reason
+              <span className="text-red-500 ml-1 text-xs">*</span>
+            </label>
             <div ref={reasonRef as any} className="relative mt-1">
               <button
                 type="button"
@@ -384,34 +412,64 @@ export default function ActivityForm({
         {status === "on_duty" && (
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className="text-sm text-gray-600">Start %</label>
+              <label className="text-sm text-gray-600">
+                Start %
+                <span className="text-red-500 ml-1 text-xs">*</span>
+              </label>
               <input
                 type="number"
                 min={0}
                 max={100}
+                placeholder="0-100"
                 value={percentStart}
-                onChange={(e) =>
-                  setPercentStart(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
-                }
-                className="mt-1 block w-full border rounded px-3 py-2"
+                onChange={(e) => {
+                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  setPercentStart(v);
+                  if (v === "") {
+                    setPercentStartError(null);
+                  } else if (typeof v === "number" && (v < 0 || v > 100)) {
+                    setPercentStartError("Must be between 0 and 100");
+                  } else {
+                    setPercentStartError(null);
+                  }
+                }}
+                className={`mt-1 block w-full border rounded px-3 py-2 ${percentStartError ? 'border-red-500' : ''}`}
               />
+              {percentStartError ? (
+                <p className="text-xs text-red-500 mt-1">{percentStartError}</p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1 h-4" aria-hidden />
+              )}
             </div>
             <div>
-              <label className="text-sm text-gray-600">End %</label>
+              <label className="text-sm text-gray-600">
+                End %
+                <span className="text-red-500 ml-1 text-xs">*</span>
+              </label>
               <input
                 type="number"
                 min={0}
                 max={100}
+                placeholder="0-100"
                 value={percentEnd}
-                onChange={(e) =>
-                  setPercentEnd(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
-                }
-                className="mt-1 block w-full border rounded px-3 py-2"
+                onChange={(e) => {
+                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  setPercentEnd(v);
+                  if (v === "") {
+                    setPercentEndError(null);
+                  } else if (typeof v === "number" && (v < 0 || v > 100)) {
+                    setPercentEndError("Must be between 0 and 100");
+                  } else {
+                    setPercentEndError(null);
+                  }
+                }}
+                className={`mt-1 block w-full border rounded px-3 py-2 ${percentEndError ? 'border-red-500' : ''}`}
               />
+              {percentEndError ? (
+                <p className="text-xs text-red-500 mt-1">{percentEndError}</p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1 h-4" aria-hidden />
+              )}
             </div>
           </div>
         )}
