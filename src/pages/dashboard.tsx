@@ -107,16 +107,15 @@ export default function DashboardPage() {
   const [pageSize, setPageSize] = useState(10);
 
   const users = useMemo(() => {
-    const map = new Map<string, string>();
+    const uniqueNames = new Set<string>();
     activities.forEach((r) => {
-      const display = r.userName || r.userEmail || r.uid || "Unknown";
-      const key = r.userEmail || r.uid || r.id;
-      map.set(key, display);
+      const name = r.userName || r.userEmail || r.uid || "Unknown";
+      uniqueNames.add(name);
     });
-    return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
+    return Array.from(uniqueNames).sort();
   }, [activities]);
 
-  // For server-side pagination, use activities directly (no client-side filtering)
+  // All filtering handled server-side (status, userName, dateRange, pagination)
   const pagedRows = activities;
 
   useEffect(
@@ -247,20 +246,13 @@ export default function DashboardPage() {
 
     const loadActivities = async () => {
       try {
-        console.log("Dashboard - Fetching with params:", {
-          page,
-          size: pageSize,
-          dateRange,
-        });
         const response = await fetchActivities({
           dateRange,
           page,
           size: pageSize,
+          status: statusFilter,
+          userName: userFilter,
           cancelToken: source.token,
-        });
-        console.log("Dashboard - Response:", {
-          totalData: response.totalData,
-          dataLength: response.data.length,
         });
         setActivities(response.data);
         setTotalData(response.totalData);
@@ -279,7 +271,7 @@ export default function DashboardPage() {
     return () => {
       source.cancel();
     };
-  }, [user, dateRange, page, pageSize]);
+  }, [user, dateRange, page, pageSize, statusFilter, userFilter]);
 
   const handleLogIdToken = async () => {
     try {
@@ -292,9 +284,6 @@ export default function DashboardPage() {
       // Copy to clipboard
       await navigator.clipboard.writeText(token || "");
 
-      console.log("=== ID TOKEN ===");
-      console.log(token);
-      console.log("================");
       showToast("Token copied to clipboard!", "success");
     } catch (err) {
       console.error("Failed to get token:", err);
@@ -548,7 +537,7 @@ export default function DashboardPage() {
                     <Dropdown
                       options={[
                         { value: "all", label: "All users" },
-                        ...users.map((u) => ({ value: u.uid, label: u.name })),
+                        ...users.map((name) => ({ value: name, label: name })),
                       ]}
                       value={userFilter}
                       onChange={(v) => setUserFilter(v)}
@@ -770,7 +759,6 @@ export default function DashboardPage() {
                             }))}
                             value={String(pageSize)}
                             onChange={(v) => {
-                              console.log("Dashboard - PageSize changed to", v);
                               setPageSize(Number(v));
                               setPage(0);
                             }}

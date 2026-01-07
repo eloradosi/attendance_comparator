@@ -57,7 +57,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
   };
 
   const parsePdfFile = async (file: File, which: "A" | "B") => {
-    console.log("🔍 Starting PDF parsing for:", file.name, which);
     setIsParsing(true);
     // Helper to sanitize parsed times into HH:MM for preview
     const sanitizeTimeForPreview = (t: string | null) => {
@@ -77,9 +76,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         const meta = await parseIHcsPdf(file);
         setEmployeeId(meta.employeeId);
         setEmployeeName(meta.employeeName);
-        console.log(
-          `✅ IHCS metadata parsed: employeeId=${meta.employeeId} employeeName=${meta.employeeName}`
-        );
 
         // Also attempt to parse timesheet-like rows from IHCS PDF (some IHCS have attendance rows)
         try {
@@ -94,14 +90,9 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
               checkout: sanitizeTimeForPreview(r.checkout),
             }));
             setParsedDataA(sanitized);
-            console.log(`✅ IHCS rows parsed: ${parsedRows.length} rows`);
-            console.log(
-              "📊 IHCS parsed rows (first 3):",
-              JSON.stringify(sanitized.slice(0, 3), null, 2)
-            );
           } else {
             // keep existing parsedDataA as null if nothing found
-            console.log("ℹ️ IHCS parsed but no attendance rows found in fileA");
+
             setParsedDataA(null);
           }
         } catch (err) {
@@ -119,14 +110,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
           checkout: sanitizeTimeForPreview(r.checkout),
         }));
         setParsedDataB(sanitized);
-        console.log(
-          `✅ PDF parsed successfully (${which})! Rows:`,
-          parsed.length
-        );
-        console.log(
-          "📊 Parsed data (first 3):",
-          JSON.stringify(sanitized.slice(0, 3), null, 2)
-        );
       }
     } catch (err) {
       console.error("❌ Failed to parse PDF:", err);
@@ -151,7 +134,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
       if (file.name.toLowerCase().endsWith(".pdf")) {
         await parsePdfFile(file, "B");
       } else {
-        console.log("ℹ️ Non-PDF file selected:", file.name);
       }
     }
   };
@@ -171,7 +153,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         if (f.name.toLowerCase().endsWith(".pdf")) {
           await parsePdfFile(f, "A");
         } else {
-          console.log("ℹ️ Non-PDF file dropped for A:", f.name);
         }
       } else {
         const file = f;
@@ -182,7 +163,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         if (file.name.toLowerCase().endsWith(".pdf")) {
           await parsePdfFile(file, "B");
         } else {
-          console.log("ℹ️ Non-PDF file dropped:", file.name);
         }
       }
     }

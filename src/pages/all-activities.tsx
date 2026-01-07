@@ -82,19 +82,23 @@ export default function AllActivitiesPage() {
   const [pageSize, setPageSize] = useState(10);
 
   const users = useMemo(() => {
-    const map = new Map<string, string>();
+    const uniqueNames = new Set<string>();
     rows.forEach((r) => {
-      // Use userName from backend response if available, otherwise fallback to uid
-      const display = r.userName || r.userEmail || r.uid || "Unknown";
-      const key = r.userEmail || r.uid || r.id;
-      map.set(key, display);
+      const name = r.userName || r.userEmail || r.uid || "Unknown";
+      uniqueNames.add(name);
     });
-    return Array.from(map.entries()).map(([uid, name]) => ({ uid, name }));
+    return Array.from(uniqueNames).sort();
   }, [rows]);
 
-  // For server-side pagination, filters should be sent to backend
-  // Remove client-side filtering - use rows directly
-  const pagedRows = rows;
+  // Server-side filtering for status and user, client-side only for todayOnly
+  const filteredRows = useMemo(() => {
+    if (!rows || rows.length === 0) return [];
+    // Status and user already filtered server-side
+    return rows.filter((r) => {
+      if (todayOnly && r.date !== today) return false;
+      return true;
+    });
+  }, [rows, todayOnly, today]);
 
   // Reset page when filters change
   useEffect(
@@ -104,8 +108,10 @@ export default function AllActivitiesPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalData / pageSize));
 
+  // Use server data directly (server-side pagination)
+  const pagedRows = filteredRows;
+
   useEffect(() => {
-    console.log("useEffect triggered with:", { page, pageSize, dateRange });
     if (typeof window === "undefined") return;
 
     const source = axios.CancelToken.source();
@@ -113,22 +119,15 @@ export default function AllActivitiesPage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        console.log("Fetching with params:", {
-          page,
-          size: pageSize,
-          dateRange,
-        });
         const response = await fetchAllActivities({
           dateRange,
           page,
           size: pageSize,
+          status: statusFilter,
+          userName: userFilter,
           cancelToken: source.token,
         });
-        console.log("Response:", {
-          totalData: response.totalData,
-          dataLength: response.data.length,
-          size: response.size,
-        });
+
         setRows(response.data);
         setTotalData(response.totalData);
       } catch (err: any) {
@@ -148,7 +147,7 @@ export default function AllActivitiesPage() {
     return () => {
       source.cancel();
     };
-  }, [dateRange, page, pageSize]);
+  }, [dateRange, page, pageSize, statusFilter, userFilter]);
 
   // Clear all filters helper
   const handleClearFilters = () => {
@@ -229,7 +228,7 @@ export default function AllActivitiesPage() {
                 <Dropdown
                   options={[
                     { value: "all", label: "All users" },
-                    ...users.map((u) => ({ value: u.uid, label: u.name })),
+                    ...users.map((name) => ({ value: name, label: name })),
                   ]}
                   value={userFilter}
                   onChange={(v) => setUserFilter(v)}
@@ -283,7 +282,7 @@ export default function AllActivitiesPage() {
               </div>
             </div>
 
-            {rows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <div className="text-sm text-gray-500">
                 No activity logs found.
               </div>
@@ -376,12 +375,6 @@ export default function AllActivitiesPage() {
                           }))}
                           value={String(pageSize)}
                           onChange={(v) => {
-                            console.log(
-                              "PageSize changed from",
-                              pageSize,
-                              "to",
-                              v
-                            );
                             setPageSize(Number(v));
                             setPage(0);
                           }}

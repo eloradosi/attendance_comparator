@@ -138,7 +138,6 @@ async function parsePdfInternal(
                         // Deteksi kolom DATE
                         if (opts.dateLabels.some(label => cellLower.includes(label))) {
                             dateColumnX = cell.x;
-                            console.log("📍 Date column detected at X:", dateColumnX, "| Label:", cell.text);
                         }
 
                         // Deteksi kolom CHECK IN (exclude 'Work Time' / duration columns)
@@ -147,7 +146,6 @@ async function parsePdfInternal(
                             !cellLower.includes("durasi") &&
                             !cellLower.includes("total")) {
                             checkinColumnX = cell.x;
-                            console.log("📍 Check In column detected at X:", checkinColumnX, "| Label:", cell.text);
                         }
 
                         // Deteksi kolom CHECK OUT (exclude 'Work Time' / duration columns)
@@ -156,7 +154,6 @@ async function parsePdfInternal(
                             !cellLower.includes("durasi") &&
                             !cellLower.includes("total")) {
                             checkoutColumnX = cell.x;
-                            console.log("📍 Check Out column detected at X:", checkoutColumnX, "| Label:", cell.text);
                         }
                     }
                     break; // Stop after finding header
@@ -192,7 +189,6 @@ async function parsePdfInternal(
                             const timeInCombined = combined.match(/(\d{1,2}[:.]\d{2}(?::\d{2})?)/);
                             if (timeInCombined && !checkinStr) {
                                 checkinStr = timeInCombined[1];
-                                console.log("  ⏰ Time extracted from date cell:", checkinStr);
                                 // Remove time from combined to clean up date string
                                 combined = combined.replace(timeInCombined[1], "").replace(/\s{2,}/g, " ").trim();
                             }
@@ -203,16 +199,13 @@ async function parsePdfInternal(
 
                             // Debug nearby content
                             if (distance <= (opts.xTolerance || 50) && combined.length > 0) {
-                                console.log(`  🔍 Near date col (dist=${distance}): "${combined}" at approx X:${dateColumnX} | short:${!!isDatePatternShort} long:${!!isDatePatternLong} dayMonth:${!!isDateDayMonth}`);
                             }
 
                             if ((isDatePatternShort || isDatePatternLong) && Math.abs(cell.x - dateColumnX) <= xTolerance) {
                                 dateStr = combined;
-                                console.log("  📅 Date found:", dateStr, "(combined) at approx X:", dateColumnX);
                             } else if (isDateDayMonth && Math.abs(cell.x - dateColumnX) <= xTolerance) {
                                 // If we only got day or day+month without year, still accept and let normalizeDateString try to infer year
                                 dateStr = combined;
-                                console.log("  📅 Partial date found:", dateStr, "(combined) at approx X:", dateColumnX);
                             }
                         }
                     }
@@ -221,7 +214,6 @@ async function parsePdfInternal(
                     if (checkinColumnX !== null && Math.abs(cell.x - checkinColumnX) <= xTolerance) {
                         if (text.match(/\d{1,2}[.:,]\d{2}/) && text.trim() !== "-" && text.trim().length > 0) {
                             checkinStr = text;
-                            console.log("  🕐 Check-in found:", checkinStr, "at X:", cell.x);
                         }
                     }
 
@@ -229,7 +221,6 @@ async function parsePdfInternal(
                     if (checkoutColumnX !== null && Math.abs(cell.x - checkoutColumnX) <= xTolerance) {
                         if (text.match(/\d{1,2}[.:,]\d{2}/) && text.trim() !== "-" && text.trim().length > 0) {
                             checkoutStr = text;
-                            console.log("  🕑 Check-out found:", checkoutStr, "at X:", cell.x);
                         }
                     }
                 }
@@ -247,11 +238,9 @@ async function parsePdfInternal(
                     }
                     if (timeTokens.length >= 1 && !checkinStr && checkinColumnX === null) {
                         checkinStr = timeTokens[0];
-                        console.log("  🕐 Check-in (fallback):", checkinStr);
                     }
                     if (timeTokens.length >= 2 && !checkoutStr && checkoutColumnX === null) {
                         checkoutStr = timeTokens[1];
-                        console.log("  🕑 Check-out (fallback):", checkoutStr);
                     }
                 }
             } else {
@@ -275,7 +264,6 @@ async function parsePdfInternal(
             if (dateStr) {
                 const normalized = normalizeDateString(dateStr);
                 if (normalized) {
-                    console.log("  ✅ Row added:", { date: normalized, checkin: checkinStr, checkout: checkoutStr });
                     results.push({
                         date: normalized,
                         checkin: checkinStr ? normalizeTime(checkinStr) : null,
@@ -319,9 +307,7 @@ export async function parsePdf(
             checkoutLabels = opts?.checkoutLabels || p.checkoutLabels || checkoutLabels;
             yTolerance = typeof opts?.yTolerance === 'number' ? opts.yTolerance : p.yTolerance;
             xTolerance = typeof opts?.xTolerance === 'number' ? opts.xTolerance : p.xTolerance;
-            console.log(`🔧 Using vendor preset: ${p.id} (yTolerance=${yTolerance}, xTolerance=${xTolerance})`);
         } else {
-            console.log(`⚠️ Vendor preset not found: ${opts.vendor} — using defaults`);
         }
     }
 

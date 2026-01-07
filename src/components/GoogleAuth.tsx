@@ -151,7 +151,7 @@ export default function GoogleAuth({
   const handleLogIdToken = async () => {
     try {
       const token = await getIdToken(false);
-      console.log("Firebase ID token:", token);
+
       await navigator.clipboard.writeText(token);
       showToast("ID token copied to clipboard", "success");
     } catch (err) {

@@ -24,6 +24,8 @@ export interface FetchActivitiesParams {
   cancelToken?: any;
   page?: number;
   size?: number;
+  status?: string;
+  userName?: string;
 }
 
 export interface FetchActivitiesResponse {
@@ -39,7 +41,7 @@ export interface FetchActivitiesResponse {
 export async function fetchActivities(
   params: FetchActivitiesParams = {}
 ): Promise<FetchActivitiesResponse> {
-  const { dateRange, cancelToken, page = 0, size = 10 } = params;
+  const { dateRange, cancelToken, page = 0, size = 10, status, userName } = params;
 
   const backend = await getApiUrl();
   const queryParams = new URLSearchParams();
@@ -47,6 +49,14 @@ export async function fetchActivities(
   queryParams.append("sortDir", "desc");
   queryParams.append("page", page.toString());
   queryParams.append("size", size.toString());
+
+  if (status && status !== "all") {
+    queryParams.append("status", status);
+  }
+
+  if (userName && userName !== "all") {
+    queryParams.append("userName", userName);
+  }
 
   if (dateRange?.from) {
     const start = dateRange.from;
