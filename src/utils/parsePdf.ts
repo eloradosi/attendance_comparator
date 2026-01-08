@@ -434,6 +434,8 @@ function normalizeDateString(dateStr: string): string | null {
         dec: "12", december: "12",
         // Indonesian variants
         januari: "01", maret: "03", mei: "05", juni: "06", juli: "07", agustus: "08", september: "09", oktober: "10", november: "11", desember: "12",
+        agst: "08", okt: "10", des: "12",
+
     };
 
     // 1) Try long form: '27 November 2025' (anywhere in the string)
