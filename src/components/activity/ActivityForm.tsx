@@ -436,6 +436,8 @@ export default function ActivityForm({
                     setPercentStartError(null);
                   } else if (typeof v === "number" && (v < 0 || v > 100)) {
                     setPercentStartError("Must be between 0 and 100");
+                  } else if (typeof v === "number" && percentEnd !== "" && v > Number(percentEnd)) {
+                    setPercentStartError("Start % cannot be greater than End %");
                   } else {
                     setPercentStartError(null);
                   }
@@ -469,6 +471,14 @@ export default function ActivityForm({
                     setPercentEndError("Must be between 0 and 100");
                   } else {
                     setPercentEndError(null);
+                  }
+                  // Re-validate percentStart in case it was showing error
+                  if (percentStart !== "" && typeof v === "number" && typeof percentStart === "number") {
+                    if (percentStart > v) {
+                      setPercentStartError("Start % cannot be greater than End %");
+                    } else if (percentStart >= 0 && percentStart <= 100) {
+                      setPercentStartError(null);
+                    }
                   }
                 }}
                 className={`mt-1 block w-full border rounded px-3 py-2 ${
