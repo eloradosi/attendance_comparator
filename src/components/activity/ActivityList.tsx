@@ -37,23 +37,13 @@ function formatSmallDatetime(dateInput: string | number | Date) {
     typeof dateInput === "string" || typeof dateInput === "number"
       ? new Date(dateInput)
       : dateInput;
-  const dateParts = new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  }).formatToParts(d);
-  const day = dateParts.find((p) => p.type === "day")?.value ?? "";
-  const month = dateParts.find((p) => p.type === "month")?.value ?? "";
-  const year = dateParts.find((p) => p.type === "year")?.value ?? "";
   const time = new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
+    hour12: true,
     timeZone: "Asia/Jakarta",
   }).format(d);
-  return `${day}/${month}/${year}, ${time} WIB`;
+  return time;
 }
 
 function relativeDayLabel(dateInput: string | number | Date) {

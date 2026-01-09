@@ -20,12 +20,14 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Trash,
+  RotateCcw,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import axios from "axios";
 import { getAppToken, clearAppToken } from "@/lib/api";
 import getIdToken from "@/lib/getIdToken";
 import { showToast } from "@/components/Toast";
+import { getApiUrl } from "@/lib/runtimeConfig";
 import Dropdown from "@/components/ui/dropdown";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
@@ -40,6 +42,8 @@ export default function DashboardPage() {
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [totalData, setTotalData] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const sidebarExpanded = useSidebar();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -95,6 +99,18 @@ export default function DashboardPage() {
     "all" | ActivityRow["status"]
   >("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+  const [statusOptions, setStatusOptions] = useState<
+    {
+      value: string;
+      label: any;
+    }[]
+  >([{ value: "all", label: "All" }]);
+  const [userOptions, setUserOptions] = useState<
+    {
+      value: string;
+      label: any;
+    }[]
+  >([{ value: "all", label: "All users" }]);
   const [todayOnly, setTodayOnly] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const statusRef = useRef<HTMLDivElement | null>(null);
@@ -238,6 +254,75 @@ export default function DashboardPage() {
     );
   }, [user, firstName]);
 
+  // Load LOVs (status and user options)
+  useEffect(() => {
+    if (!user) return;
+    const source = axios.CancelToken.source();
+
+    const loadLovs = async () => {
+      try {
+        const backend = await getApiUrl();
+        const token = getAppToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [sRes, uRes] = await Promise.all([
+          axios.get(
+            `${backend.replace(/\/$/, "")}/api/dashboard/logbook-status`,
+            {
+              headers,
+              cancelToken: source.token,
+            }
+          ),
+          axios.get(
+            `${backend.replace(/\/$/, "")}/api/dashboard/logbook-users`,
+            {
+              headers,
+              cancelToken: source.token,
+            }
+          ),
+        ]);
+
+        const sData = Array.isArray(sRes.data) ? sRes.data : [];
+        setStatusOptions([
+          { value: "all", label: "All" },
+          ...sData.map((x: any) => ({
+            value: x.value,
+            label: (
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    x.value === "on_duty"
+                      ? "bg-amber-300"
+                      : x.value === "off_duty"
+                      ? "bg-red-300"
+                      : x.value === "idle"
+                      ? "bg-green-300"
+                      : "bg-gray-300"
+                  }`}
+                />
+                <span>{x.label}</span>
+              </span>
+            ),
+          })),
+        ]);
+
+        const uData = Array.isArray(uRes.data) ? uRes.data : [];
+        setUserOptions([
+          { value: "all", label: "All users" },
+          ...uData.map((x: any) => ({ value: x.value, label: x.label })),
+        ]);
+      } catch (err: any) {
+        if (axios.isCancel(err)) return;
+        console.error("Error loading LOVs:", err);
+      }
+    };
+
+    loadLovs();
+
+    return () => {
+      source.cancel();
+    };
+  }, [user]);
+
   // Fetch activities with dateRange support
   useEffect(() => {
     if (!user) return;
@@ -245,6 +330,7 @@ export default function DashboardPage() {
     const source = axios.CancelToken.source();
 
     const loadActivities = async () => {
+      setIsLoading(true);
       try {
         const response = await fetchActivities({
           dateRange,
@@ -263,6 +349,8 @@ export default function DashboardPage() {
         console.error("Error fetching activities:", err);
         setActivities([]);
         setTotalData(0);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -271,7 +359,15 @@ export default function DashboardPage() {
     return () => {
       source.cancel();
     };
-  }, [user, dateRange, page, pageSize, statusFilter, userFilter]);
+  }, [
+    user,
+    dateRange,
+    page,
+    pageSize,
+    statusFilter,
+    userFilter,
+    refreshTrigger,
+  ]);
 
   const handleLogIdToken = async () => {
     try {
@@ -490,36 +586,7 @@ export default function DashboardPage() {
                       Status
                     </label>
                     <Dropdown
-                      options={[
-                        { value: "all", label: "All" },
-                        {
-                          value: "on_duty",
-                          label: (
-                            <span className="inline-flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-amber-300" />
-                              <span>On duty</span>
-                            </span>
-                          ),
-                        },
-                        {
-                          value: "off_duty",
-                          label: (
-                            <span className="inline-flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-red-300" />
-                              <span>Off duty</span>
-                            </span>
-                          ),
-                        },
-                        {
-                          value: "idle",
-                          label: (
-                            <span className="inline-flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-green-300" />
-                              <span>Idle</span>
-                            </span>
-                          ),
-                        },
-                      ]}
+                      options={statusOptions}
                       value={statusFilter}
                       onChange={(v) => setStatusFilter(v as any)}
                       width="w-44"
@@ -535,10 +602,7 @@ export default function DashboardPage() {
                       User
                     </label>
                     <Dropdown
-                      options={[
-                        { value: "all", label: "All users" },
-                        ...users.map((name) => ({ value: name, label: name })),
-                      ]}
+                      options={userOptions}
                       value={userFilter}
                       onChange={(v) => setUserFilter(v)}
                       width="w-64"
@@ -557,27 +621,28 @@ export default function DashboardPage() {
                     <DateRangePicker
                       dateRange={dateRange}
                       onDateRangeChange={setDateRange}
-                      className="w-64"
                     />
                   </div>
 
                   {/* Quick shortcuts - desktop inline, mobile below */}
                   <div className="flex items-end gap-2 flex-wrap mt-2 lg:mt-0">
                     <button
-                      onClick={() => {
-                        setStatusFilter("idle");
-                        setUserFilter("all");
-                        // Set dateRange ke hari ini agar trigger fetch API
-                        const today = new Date();
-                        setDateRange({ from: today, to: today });
-                      }}
-                      className={`inline-flex items-center text-sm font-semibold gap-2 px-3 py-2 rounded-md transition ${
+                      onClick={() => setRefreshTrigger((prev) => prev + 1)}
+                      disabled={isLoading}
+                      title="Refresh data"
+                      aria-label="Refresh data"
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border transition text-sm ${
                         isDarkMode
-                          ? "bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30"
-                          : "bg-green-100 border border-green-300 text-green-700 hover:bg-green-200"
-                      }`}
+                          ? "border-gray-700 hover:bg-gray-800 text-gray-300"
+                          : "hover:bg-gray-50"
+                      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
-                      View Today’s Idle
+                      <RotateCcw
+                        className={`w-4 h-4 ${
+                          isDarkMode ? "text-green-400" : "text-green-600"
+                        } ${isLoading ? "animate-spin" : ""}`}
+                      />
+                      <span>{isLoading ? "Loading..." : "Refresh"}</span>
                     </button>
 
                     {(statusFilter !== "all" ||
@@ -630,14 +695,20 @@ export default function DashboardPage() {
                             <th className="py-2 px-3 whitespace-nowrap">
                               User
                             </th>
-                            <th className="py-2 px-3 whitespace-nowrap">
+                            <th className="py-2 px-3 whitespace-nowrap w-28">
                               Date
                             </th>
-                            <th className="py-2 px-3 whitespace-nowrap w-24">Status</th>
+                            <th className="py-2 px-3 whitespace-nowrap w-24">
+                              Status
+                            </th>
                             <th className="py-2 px-3">Title / Reason</th>
                             <th className="py-2 px-3">Details</th>
-                            <th className="py-2 px-3">Created</th>
-                            <th className="py-2 px-3">Updated</th>
+                            <th className="py-2 px-3 whitespace-nowrap w-28">
+                              Created
+                            </th>
+                            <th className="py-2 px-3 whitespace-nowrap w-28">
+                              Updated
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -658,11 +729,16 @@ export default function DashboardPage() {
                                 {r.userName || r.userEmail || "Unknown"}
                               </td>
                               <td
-                                className={`py-2 px-3 align-top text-sm ${
+                                className={`py-2 px-3 align-top text-sm whitespace-nowrap ${
                                   isDarkMode ? "text-gray-300" : "text-gray-700"
                                 }`}
                               >
-                                {r.date}
+                                {(() => {
+                                  const d = r.date.split("-");
+                                  return d.length === 3
+                                    ? `${d[2]}-${d[1]}-${d[0]}`
+                                    : r.date;
+                                })()}
                               </td>
                               <td className="py-2 px-3 align-top text-sm">
                                 <span
@@ -707,21 +783,35 @@ export default function DashboardPage() {
                                 </div>
                               </td>
                               <td
-                                className={`py-2 px-3 align-top text-xs ${
+                                className={`py-2 px-3 align-top text-xs whitespace-nowrap ${
                                   isDarkMode ? "text-gray-400" : "text-gray-500"
                                 }`}
                               >
                                 {r.createdAt
-                                  ? new Date(r.createdAt).toLocaleString()
+                                  ? new Date(r.createdAt).toLocaleTimeString(
+                                      "en-US",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true,
+                                      }
+                                    )
                                   : "-"}
                               </td>
                               <td
-                                className={`py-2 px-3 align-top text-xs ${
+                                className={`py-2 px-3 align-top text-xs whitespace-nowrap ${
                                   isDarkMode ? "text-gray-400" : "text-gray-500"
                                 }`}
                               >
                                 {r.updatedAt
-                                  ? new Date(r.updatedAt).toLocaleString()
+                                  ? new Date(r.updatedAt).toLocaleTimeString(
+                                      "en-US",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true,
+                                      }
+                                    )
                                   : "-"}
                               </td>
                             </tr>
