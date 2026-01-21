@@ -1,13 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload } from "lucide-react";
@@ -21,7 +14,7 @@ interface FileUploadProps {
     parsedDataA?: ParsedTimesheetRow[],
     parsedDataB?: ParsedTimesheetRow[],
     employeeId?: string,
-    employeeName?: string
+    employeeName?: string,
   ) => Promise<void>;
 }
 
@@ -35,10 +28,10 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
   const [vendor, setVendor] = useState<string>("auto");
   const [isParsing, setIsParsing] = useState(false);
   const [parsedDataA, setParsedDataA] = useState<ParsedTimesheetRow[] | null>(
-    null
+    null,
   );
   const [parsedDataB, setParsedDataB] = useState<ParsedTimesheetRow[] | null>(
-    null
+    null,
   );
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [employeeName, setEmployeeName] = useState<string | null>(null);
@@ -140,7 +133,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
 
   const handleDrop = async (
     e: React.DragEvent<HTMLDivElement>,
-    which: "A" | "B"
+    which: "A" | "B",
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -203,7 +196,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         parsedDataA || undefined,
         parsedDataB || undefined,
         employeeId || undefined,
-        employeeName || undefined
+        employeeName || undefined,
       );
     } finally {
       setIsLoading(false);
@@ -212,90 +205,86 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto overflow-hidden">
-      <CardHeader className="space-y-2 px-4 md:px-6 py-4 md:py-6">
-        <CardTitle className="text-lg md:text-xl">
-          Upload Attendance Files
-        </CardTitle>
-        <CardDescription className="text-sm">
-          Upload IHCS and Timesheet to compare. Supported formats: CSV, XLSX,
-          PDF
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-4 md:px-6 pb-4 md:pb-6 pt-0">
-        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="fileA" className="text-sm md:text-base">
-              IHCS
-            </Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="file"
-                id="fileA"
-                accept=".csv,.xlsx,.pdf"
-                onChange={handleFileAChange}
-                className="hidden"
-              />
-              <div
-                onDrop={(e) => handleDrop(e, "A")}
-                onDragOver={handleDragOver}
-                onDragEnter={() => handleDragEnter("A")}
-                onDragLeave={() => handleDragLeave("A")}
-                onClick={() => document.getElementById("fileA")?.click()}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
-                  dragA ? "bg-gray-50 border-primary" : ""
-                }`}
-              >
-                <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                <span className="text-xs md:text-sm truncate">
-                  {fileA ? fileA.name : "Drag & drop or click to choose file"}
-                </span>
-              </div>
+    <div className="w-full">
+      <h2 className="text-lg md:text-xl font-semibold mb-1">
+        Upload Attendance Files
+      </h2>
+      <p className="text-sm text-gray-600 mb-4 md:mb-6">
+        Upload IHCS and Timesheet to compare. Supported formats: CSV, XLSX, PDF
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="fileA" className="text-sm md:text-base">
+            IHCS
+          </Label>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id="fileA"
+              accept=".csv,.xlsx,.pdf"
+              onChange={handleFileAChange}
+              className="hidden"
+            />
+            <div
+              onDrop={(e) => handleDrop(e, "A")}
+              onDragOver={handleDragOver}
+              onDragEnter={() => handleDragEnter("A")}
+              onDragLeave={() => handleDragLeave("A")}
+              onClick={() => document.getElementById("fileA")?.click()}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
+                dragA ? "bg-gray-50 border-primary" : ""
+              }`}
+            >
+              <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+              <span className="text-xs md:text-sm truncate">
+                {fileA ? fileA.name : "Drag & drop or click to choose file"}
+              </span>
             </div>
           </div>
+        </div>
 
-          {employeeId || employeeName ? (
-            <div className="text-sm text-gray-700">
-              <div>
-                <strong>Employee ID:</strong> {employeeId || "N/A"}
-              </div>
-              <div>
-                <strong>Employee Name:</strong> {employeeName || "N/A"}
-              </div>
+        {employeeId || employeeName ? (
+          <div className="text-sm text-gray-700">
+            <div>
+              <strong>Employee ID:</strong> {employeeId || "N/A"}
             </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="fileB" className="text-sm md:text-base">
-              Timesheet
-            </Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="file"
-                id="fileB"
-                accept=".csv,.xlsx,.pdf"
-                onChange={handleFileBChange}
-                className="hidden"
-              />
-              <div
-                onDrop={(e) => handleDrop(e, "B")}
-                onDragOver={handleDragOver}
-                onDragEnter={() => handleDragEnter("B")}
-                onDragLeave={() => handleDragLeave("B")}
-                onClick={() => document.getElementById("fileB")?.click()}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
-                  dragB ? "bg-gray-50 border-primary" : ""
-                }`}
-              >
-                <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                <span className="text-xs md:text-sm truncate">
-                  {fileB ? fileB.name : "Drag & drop or click to choose file"}
-                </span>
-              </div>
+            <div>
+              <strong>Employee Name:</strong> {employeeName || "N/A"}
             </div>
           </div>
+        ) : null}
 
-          {/* <div className="flex items-center gap-2">
+        <div className="space-y-2">
+          <Label htmlFor="fileB" className="text-sm md:text-base">
+            Timesheet
+          </Label>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id="fileB"
+              accept=".csv,.xlsx,.pdf"
+              onChange={handleFileBChange}
+              className="hidden"
+            />
+            <div
+              onDrop={(e) => handleDrop(e, "B")}
+              onDragOver={handleDragOver}
+              onDragEnter={() => handleDragEnter("B")}
+              onDragLeave={() => handleDragLeave("B")}
+              onClick={() => document.getElementById("fileB")?.click()}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors ${
+                dragB ? "bg-gray-50 border-primary" : ""
+              }`}
+            >
+              <Upload className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+              <span className="text-xs md:text-sm truncate">
+                {fileB ? fileB.name : "Drag & drop or click to choose file"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* <div className="flex items-center gap-2">
               <Label htmlFor="vendor" className="text-sm">
                 Vendor
               </Label>
@@ -311,13 +300,13 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
               </select>
             </div> */}
 
-          {isParsing && (
-            <div className="text-sm text-blue-600 font-semibold animate-pulse">
-              🔄 Parsing PDF...
-            </div>
-          )}
+        {isParsing && (
+          <div className="text-sm text-blue-600 font-semibold animate-pulse">
+            🔄 Parsing PDF...
+          </div>
+        )}
 
-          {/* {parsedDataA && parsedDataA.length > 0 && (
+        {/* {parsedDataA && parsedDataA.length > 0 && (
             <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="text-sm font-semibold text-green-700">
                 ✅ IHCS PDF Parsed Successfully: {parsedDataA.length} rows
@@ -357,29 +346,28 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
             </div>
           )} */}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={!fileA || !fileB || isLoading || isParsing}
-          >
-            {isLoading ? "Uploading..." : "Compare Files"}
-          </Button>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={!fileA || !fileB || isLoading || isParsing}
+        >
+          {isLoading ? "Uploading..." : "Compare Files"}
+        </Button>
 
-          {isLoading && (
-            <div className="w-full mt-3">
-              <div className="h-2 bg-gray-200 rounded overflow-hidden">
-                <div
-                  className="h-2 bg-blue-600"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <div className="text-right text-xs text-gray-600 mt-1">
-                {progress}%
-              </div>
+        {isLoading && (
+          <div className="w-full mt-3">
+            <div className="h-2 bg-gray-200 rounded overflow-hidden">
+              <div
+                className="h-2 bg-blue-600"
+                style={{ width: `${progress}%` }}
+              />
             </div>
-          )}
-        </form>
-      </CardContent>
-    </Card>
+            <div className="text-right text-xs text-gray-600 mt-1">
+              {progress}%
+            </div>
+          </div>
+        )}
+      </form>
+    </div>
   );
 }

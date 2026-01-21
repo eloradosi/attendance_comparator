@@ -7,7 +7,16 @@ import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { clearAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 
+// ⚠️ TEMPORARY BYPASS FOR FRONTEND DEVELOPMENT ⚠️
+const TEMP_BYPASS_AUTH = true; // Set to false when backend is ready
+// ⚠️ END TEMPORARY BYPASS ⚠️
+
 export default function AuthGuard({ children }: PropsWithChildren) {
+  // If bypass is enabled, render children immediately
+  if (TEMP_BYPASS_AUTH) {
+    return <>{children}</>;
+  }
+
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);

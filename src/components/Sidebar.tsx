@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FileText, Clipboard, Users, TrendingUp, LogOut } from "lucide-react";
+import {
+  FileText,
+  Clipboard,
+  Users,
+  TrendingUp,
+  LogOut,
+  FileSpreadsheet,
+} from "lucide-react";
 import { signOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { clearAppToken } from "@/lib/api";
@@ -274,6 +281,51 @@ export default function Sidebar() {
                 }`}
               >
                 Attendance Comparator
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("app:navigate"));
+              router.push("/timesheet-preview");
+            }}
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group w-full text-left ${
+              sidebarExpanded ? "" : "justify-center"
+            } ${
+              isActive("/timesheet-preview")
+                ? isDarkMode
+                  ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
+                  : "bg-green-100 border-green-300 hover:bg-green-200"
+                : isDarkMode
+                ? "hover:bg-white/10 border-transparent"
+                : "hover:bg-gray-200 border-transparent"
+            }`}
+          >
+            <FileSpreadsheet
+              className={`w-5 h-5 flex-shrink-0 ${
+                isActive("/timesheet-preview")
+                  ? isDarkMode
+                    ? "text-green-400"
+                    : "text-green-600"
+                  : isDarkMode
+                  ? "text-gray-400"
+                  : "text-gray-600"
+              }`}
+            />
+            {sidebarExpanded && (
+              <span
+                className={`text-sm font-medium whitespace-nowrap ${
+                  isActive("/timesheet-preview")
+                    ? isDarkMode
+                      ? "text-white"
+                      : "text-gray-900"
+                    : isDarkMode
+                    ? "text-gray-300"
+                    : "text-gray-700"
+                }`}
+              >
+                Timesheet Preview
               </span>
             )}
           </button>

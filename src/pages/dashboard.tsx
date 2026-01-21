@@ -36,6 +36,7 @@ import {
   type ActivityRow,
 } from "@/components/service/dashboard";
 import ToastContainer from "@/components/Toast";
+import SlideLoader from "@/components/SlideLoader";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +44,7 @@ export default function DashboardPage() {
   const [totalData, setTotalData] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with true
   const sidebarExpanded = useSidebar();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -254,17 +255,26 @@ export default function DashboardPage() {
     );
   }, [user, firstName]);
 
-  // Load LOVs (status and user options)
+  // Load LOVs and Activities together
   useEffect(() => {
-    if (!user) return;
-    const source = axios.CancelToken.source();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
-    const loadLovs = async () => {
+    const source = axios.CancelToken.source();
+    let isMounted = true;
+
+    const loadAllData = async () => {
+      if (isMounted) setIsLoading(true);
+
       try {
         const backend = await getApiUrl();
         const token = getAppToken();
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [sRes, uRes] = await Promise.all([
+
+        // Load LOVs and Activities in parallel
+        const [sRes, uRes, activitiesResponse] = await Promise.all([
           axios.get(
             `${backend.replace(/\/$/, "")}/api/dashboard/logbook-status`,
             {
@@ -279,8 +289,19 @@ export default function DashboardPage() {
               cancelToken: source.token,
             }
           ),
+          fetchActivities({
+            dateRange,
+            page,
+            size: pageSize,
+            status: statusFilter,
+            userName: userFilter,
+            cancelToken: source.token,
+          }),
         ]);
 
+        if (!isMounted) return;
+
+        // Set status options
         const sData = Array.isArray(sRes.data) ? sRes.data : [];
         setStatusOptions([
           { value: "all", label: "All" },
@@ -305,58 +326,30 @@ export default function DashboardPage() {
           })),
         ]);
 
+        // Set user options
         const uData = Array.isArray(uRes.data) ? uRes.data : [];
         setUserOptions([
           { value: "all", label: "All users" },
           ...uData.map((x: any) => ({ value: x.value, label: x.label })),
         ]);
+
+        // Set activities
+        setActivities(activitiesResponse.data);
+        setTotalData(activitiesResponse.totalData);
       } catch (err: any) {
         if (axios.isCancel(err)) return;
-        console.error("Error loading LOVs:", err);
-      }
-    };
-
-    loadLovs();
-
-    return () => {
-      source.cancel();
-    };
-  }, [user]);
-
-  // Fetch activities with dateRange support
-  useEffect(() => {
-    if (!user) return;
-
-    const source = axios.CancelToken.source();
-
-    const loadActivities = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetchActivities({
-          dateRange,
-          page,
-          size: pageSize,
-          status: statusFilter,
-          userName: userFilter,
-          cancelToken: source.token,
-        });
-        setActivities(response.data);
-        setTotalData(response.totalData);
-      } catch (err: any) {
-        if (axios.isCancel(err)) {
-          return;
-        }
-        console.error("Error fetching activities:", err);
+        console.error("Error loading dashboard data:", err);
         setActivities([]);
         setTotalData(0);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    loadActivities();
+    loadAllData();
 
     return () => {
+      isMounted = false;
       source.cancel();
     };
   }, [
@@ -391,6 +384,8 @@ export default function DashboardPage() {
     <>
       <ToastContainer />
       <AuthGuard>
+        <SlideLoader isLoading={isLoading} message="Loading dashboard..." />
+
         <div
           className={`min-h-screen transition-colors duration-300 ${
             isDarkMode

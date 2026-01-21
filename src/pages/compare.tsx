@@ -50,7 +50,7 @@ export default function ComparePage() {
       } catch (err) {
         console.error(
           "Failed to parse comparisonResult from sessionStorage",
-          err
+          err,
         );
         // clear and allow user to upload again
         sessionStorage.removeItem("comparisonResult");
@@ -66,7 +66,7 @@ export default function ComparePage() {
     ihcs?: any,
     timesheet?: any,
     employeeId?: string,
-    employeeName?: string
+    employeeName?: string,
   ) => {
     try {
       const dataResp = await compareFiles({
@@ -137,22 +137,15 @@ export default function ComparePage() {
                 }`}
               />
 
-              <section
-                className={`p-4 md:p-6 rounded-lg backdrop-blur-sm border ${
+              <div
+                className={`p-6 rounded-lg border ${
                   isDarkMode
-                    ? "bg-white/10 border-white/20"
+                    ? "bg-slate-800/50 border-slate-700"
                     : "bg-white border-gray-200"
                 }`}
               >
-                <p
-                  className={`mb-4 md:mb-6 text-sm md:text-base ${
-                    isDarkMode ? "text-gray-200" : "text-gray-600"
-                  }`}
-                >
-                  Upload IHCS and Timesheet files to compare attendance records.
-                </p>
                 <FileUpload onSubmit={handleSubmit} />
-              </section>
+              </div>
             </div>
           </div>
         </div>

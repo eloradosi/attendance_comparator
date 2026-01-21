@@ -14,10 +14,22 @@ import { getApiUrl } from "@/lib/runtimeConfig";
 import Link from "next/link";
 import ToastContainer from "@/components/Toast";
 
+// ⚠️ TEMPORARY BYPASS FOR FRONTEND DEVELOPMENT ⚠️
+const TEMP_BYPASS_LOGIN = true; // Set to false when backend is ready
+// ⚠️ END TEMPORARY BYPASS ⚠️
+
 export default function LoginPage() {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // If bypass is enabled, redirect immediately to dashboard
+  useEffect(() => {
+    if (TEMP_BYPASS_LOGIN) {
+      router.push("/dashboard");
+      return;
+    }
+  }, [router]);
 
   // Check auth immediately - don't render anything if already logged in
   const [shouldRender, setShouldRender] = useState(false);
@@ -97,14 +109,14 @@ export default function LoginPage() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ idToken }),
-          }
+          },
         );
 
         if (!response.ok) {
           console.warn(
             "Backend login failed:",
             response.status,
-            await response.text()
+            await response.text(),
           );
           // Sign out from Firebase to prevent auto-redirect
           await authInstance.signOut();
