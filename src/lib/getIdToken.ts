@@ -3,7 +3,7 @@
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 
 // ⚠️ TEMPORARY BYPASS FOR FRONTEND DEVELOPMENT ⚠️
-const TEMP_BYPASS_AUTH = true; // Set to false when backend is ready
+const TEMP_BYPASS_AUTH = false; // Set to false when backend is ready
 // ⚠️ END TEMPORARY BYPASS ⚠️
 
 export default async function getIdToken(forceRefresh = false): Promise<string> {

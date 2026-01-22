@@ -8,7 +8,7 @@ import { clearAppToken } from "@/lib/api";
 import { showToast } from "@/components/Toast";
 
 // ⚠️ TEMPORARY BYPASS FOR FRONTEND DEVELOPMENT ⚠️
-const TEMP_BYPASS_AUTH = true; // Set to false when backend is ready
+const TEMP_BYPASS_AUTH = false; // Set to false when backend is ready
 // ⚠️ END TEMPORARY BYPASS ⚠️
 
 export default function AuthGuard({ children }: PropsWithChildren) {

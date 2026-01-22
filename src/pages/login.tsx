@@ -15,7 +15,7 @@ import Link from "next/link";
 import ToastContainer from "@/components/Toast";
 
 // ⚠️ TEMPORARY BYPASS FOR FRONTEND DEVELOPMENT ⚠️
-const TEMP_BYPASS_LOGIN = true; // Set to false when backend is ready
+const TEMP_BYPASS_LOGIN = false; // Set to false when backend is ready
 // ⚠️ END TEMPORARY BYPASS ⚠️
 
 export default function LoginPage() {
