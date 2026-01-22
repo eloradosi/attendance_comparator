@@ -20,6 +20,7 @@ export interface ParsedTimesheetRow {
     date: string;
     checkin: string | null;
     checkout: string | null;
+    ket: string | null;
 }
 
 /**
@@ -81,6 +82,7 @@ type ParseInternalOpts = {
     dateLabels: string[];
     checkinLabels: string[];
     checkoutLabels: string[];
+    ketLabels: string[];
     yTolerance?: number;
     xTolerance?: number;
 };
@@ -102,6 +104,7 @@ async function parsePdfInternal(
         let dateColumnX: number | null = null;
         let checkinColumnX: number | null = null;
         let checkoutColumnX: number | null = null;
+        let ketColumnX: number | null = null;
 
         // SETTING: Tolerance untuk matching posisi X (dalam pixel)
         const xTolerance = typeof opts.xTolerance === "number" ? opts.xTolerance : 20;
@@ -155,6 +158,11 @@ async function parsePdfInternal(
                             !cellLower.includes("total")) {
                             checkoutColumnX = cell.x;
                         }
+
+                        // Deteksi kolom KET/KETERANGAN
+                        if (opts.ketLabels.some(label => cellLower.includes(label))) {
+                            ketColumnX = cell.x;
+                        }
                     }
                     break; // Stop after finding header
                 }
@@ -166,9 +174,10 @@ async function parsePdfInternal(
             let dateStr: string | null = null;
             let checkinStr: string | null = null;
             let checkoutStr: string | null = null;
+            let ketStr: string | null = null;
 
             // METHOD 1: Use column positions if detected
-            if (dateColumnX !== null || checkinColumnX !== null || checkoutColumnX !== null) {
+            if (dateColumnX !== null || checkinColumnX !== null || checkoutColumnX !== null || ketColumnX !== null) {
                 for (const cell of row) {
                     const text = cell.text.trim();
 
@@ -223,6 +232,13 @@ async function parsePdfInternal(
                             checkoutStr = text;
                         }
                     }
+
+                    // Ket/Keterangan column
+                    if (ketColumnX !== null && Math.abs(cell.x - ketColumnX) <= xTolerance) {
+                        if (text.trim() !== "-" && text.trim().length > 0) {
+                            ketStr = text;
+                        }
+                    }
                 }
 
                 // Fallback: if dateStr found but times missing AND no columns detected, scan for time patterns
@@ -268,6 +284,7 @@ async function parsePdfInternal(
                         date: normalized,
                         checkin: checkinStr ? normalizeTime(checkinStr) : null,
                         checkout: checkoutStr ? normalizeTime(checkoutStr) : null,
+                        ket: ketStr,
                     });
                 }
             }
@@ -284,6 +301,7 @@ export async function parsePdf(
         dateLabels?: string[];
         checkinLabels?: string[];
         checkoutLabels?: string[];
+        ketLabels?: string[];
         yTolerance?: number;
         xTolerance?: number;
     }
@@ -291,11 +309,13 @@ export async function parsePdf(
     const defaultDateLabels = ["date", "tanggal", "tgl"];
     const defaultCheckinLabels = ["jam check in", "check in", "checkin", "jam masuk"];
     const defaultCheckoutLabels = ["jam check out", "check out", "checkout", "jam keluar"];
+    const defaultKetLabels = ["ket", "keterangan", "status", "remarks"];
 
     // If a vendor preset is provided, merge opts with preset values
     let dateLabels = opts?.dateLabels || defaultDateLabels;
     let checkinLabels = opts?.checkinLabels || defaultCheckinLabels;
     let checkoutLabels = opts?.checkoutLabels || defaultCheckoutLabels;
+    let ketLabels = opts?.ketLabels || defaultKetLabels;
     let yTolerance = opts?.yTolerance;
     let xTolerance = opts?.xTolerance;
 
@@ -305,13 +325,14 @@ export async function parsePdf(
             dateLabels = opts?.dateLabels || p.dateLabels || dateLabels;
             checkinLabels = opts?.checkinLabels || p.checkinLabels || checkinLabels;
             checkoutLabels = opts?.checkoutLabels || p.checkoutLabels || checkoutLabels;
+            ketLabels = opts?.ketLabels || defaultKetLabels;
             yTolerance = typeof opts?.yTolerance === 'number' ? opts.yTolerance : p.yTolerance;
             xTolerance = typeof opts?.xTolerance === 'number' ? opts.xTolerance : p.xTolerance;
         } else {
         }
     }
 
-    return parsePdfInternal(file, { dateLabels, checkinLabels, checkoutLabels, yTolerance, xTolerance });
+    return parsePdfInternal(file, { dateLabels, checkinLabels, checkoutLabels, ketLabels, yTolerance, xTolerance });
 }
 
 // Backwards compatible alias
@@ -336,8 +357,12 @@ export async function parseIHcsPdf(file: File): Promise<{ employeeId: string | n
                 const id = omMatch[1];
                 // Extract name: everything after the ID
                 const afterId = rowText.substring(rowText.indexOf(omMatch[1]) + omMatch[1].length).trim();
-                // Clean up name: remove common separators and labels
-                const name = afterId.replace(/^[:\-\/\s]+/, '').replace(/\s+/g, ' ').trim() || null;
+                // Clean up name: remove common separators, slashes, and extra whitespace
+                const name = afterId
+                    .replace(/^[:\-\/\s]+/, '')  // Remove leading separators
+                    .replace(/[\/]+/g, ' ')       // Replace slashes with space
+                    .replace(/\s+/g, ' ')          // Normalize multiple spaces
+                    .trim() || null;
                 return { employeeId: id, employeeName: name };
             }
         }
@@ -362,7 +387,10 @@ export async function parseIHcsPdf(file: File): Promise<{ employeeId: string | n
                     const id = candidate;
                     // try to find name in same row after id
                     const after = rowText.split(m[1])[1];
-                    const name = after ? after.replace(/[:\-\/]/g, ' ').trim() : null;
+                    const name = after ? after
+                        .replace(/[:\-\/]+/g, ' ')   // Replace separators with space
+                        .replace(/\s+/g, ' ')         // Normalize multiple spaces
+                        .trim() : null;
                     return { employeeId: id, employeeName: name || null };
                 }
             }
@@ -379,7 +407,10 @@ export async function parseIHcsPdf(file: File): Promise<{ employeeId: string | n
                 if (idMatch) {
                     const id = idMatch[0];
                     const nameParts = row.slice(i + 1).map(c => c.text).filter(Boolean);
-                    const name = nameParts.join(' ').trim() || null;
+                    const name = nameParts.join(' ')
+                        .replace(/[\/]+/g, ' ')   // Replace slashes with space
+                        .replace(/\s+/g, ' ')      // Normalize multiple spaces
+                        .trim() || null;
                     return { employeeId: id, employeeName: name };
                 }
             }

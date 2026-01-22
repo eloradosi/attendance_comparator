@@ -138,6 +138,7 @@ export default function TimesheetPreviewPage() {
           checkin: row.checkin,
           checkout: row.checkout,
           totalWorkingHour,
+          ket: row.ket,
         };
       });
 

@@ -17,6 +17,7 @@ export interface TimesheetPreviewParams {
         checkin: string | null;
         checkout: string | null;
         totalWorkingHour: string | null;
+        ket?: string | null;
     }[];
 }
 
