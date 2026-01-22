@@ -67,7 +67,7 @@ export default function GoogleAuth({
           {
             method: "POST",
             body: JSON.stringify({ idToken }),
-          }
+          },
         );
 
         if (!resp.ok) {
@@ -75,9 +75,18 @@ export default function GoogleAuth({
           showToast("Backend login failed", "error");
         } else {
           const data = await resp.json();
+          console.log("✅ Login response:", data);
+
           // Store token in sessionStorage (persists on reload, cleared when tab closes)
           if (data?.token) {
             setAppToken(data.token);
+          }
+          // Store user role for access control
+          if (data?.role) {
+            sessionStorage.setItem("userRole", data.role);
+            console.log("✅ User role saved:", data.role);
+          } else {
+            console.warn("⚠️ No role in response");
           }
           showToast("Signed in", "success");
         }
@@ -98,7 +107,7 @@ export default function GoogleAuth({
     } catch (err: any) {
       console.warn(
         "Google sign-in (popup) failed:",
-        err?.code || err?.message || err
+        err?.code || err?.message || err,
       );
 
       // Known error codes that suggest popup was blocked or unsupported:
@@ -119,7 +128,7 @@ export default function GoogleAuth({
         } catch (rErr) {
           console.error("Redirect sign-in also failed:", rErr);
           alert(
-            "Google sign-in failed. Please disable popup blockers or try another browser."
+            "Google sign-in failed. Please disable popup blockers or try another browser.",
           );
         }
         return;
@@ -136,9 +145,10 @@ export default function GoogleAuth({
       const authInstance = await getFirebaseAuth();
       await signOut(authInstance);
       clearAppToken();
-      // Remove stored lastPath then redirect to dashboard after sign out
+      // Remove stored lastPath and userRole then redirect to dashboard after sign out
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("lastPath");
+        sessionStorage.removeItem("userRole");
       }
       router.push("/dashboard");
       // TODO: Call backend logout endpoint if needed

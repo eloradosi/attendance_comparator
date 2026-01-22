@@ -24,7 +24,7 @@ export default function Dropdown({
   const ref = useRef<HTMLDivElement | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(
     typeof window !== "undefined" &&
-      sessionStorage.getItem("isDarkMode") === "true"
+      sessionStorage.getItem("isDarkMode") === "true",
   );
 
   useEffect(() => {
@@ -95,10 +95,10 @@ export default function Dropdown({
         <ul
           role="listbox"
           tabIndex={-1}
-          className={`absolute mt-1 left-0 right-0 rounded shadow z-50 max-h-60 overflow-auto ${
+          className={`absolute mt-1 left-0 right-0 w-full rounded shadow z-[100] max-h-60 overflow-auto ${
             isDarkMode
-              ? "bg-teal-900 border border-teal-700/30"
-              : "bg-white border"
+              ? "bg-gray-800 border border-gray-700 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-700 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded"
+              : "bg-white border border-gray-300 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded"
           }`}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
@@ -135,8 +135,8 @@ export default function Dropdown({
                     ? "bg-white/5"
                     : "bg-gray-100"
                   : isDarkMode
-                  ? "hover:bg-white/5"
-                  : "hover:bg-gray-50"
+                    ? "hover:bg-white/5"
+                    : "hover:bg-gray-50"
               } ${
                 opt.value === value
                   ? "font-medium"

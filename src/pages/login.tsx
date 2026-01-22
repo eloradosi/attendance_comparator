@@ -125,9 +125,18 @@ export default function LoginPage() {
         }
 
         const data = await response.json();
+        console.log("✅ Login response:", data);
+
         // Store backend session token
         if (data?.token) {
           setAppToken(data.token);
+        }
+        // Store user role for access control
+        if (data?.role) {
+          sessionStorage.setItem("userRole", data.role);
+          console.log("✅ User role saved:", data.role);
+        } else {
+          console.warn("⚠️ No role in response");
         }
         showToast("Sign in successful!", "success");
         // Remove stored lastPath so we don't reuse it later

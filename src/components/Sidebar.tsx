@@ -7,10 +7,12 @@ import {
   TrendingUp,
   LogOut,
   FileSpreadsheet,
+  UserCheck,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { clearAppToken } from "@/lib/api";
+import { isAdmin } from "@/lib/userRoles";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export default function Sidebar() {
     }
     return false;
   });
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
   const pathname = router.pathname;
 
   useEffect(() => {
@@ -36,9 +39,16 @@ export default function Sidebar() {
   }, [sidebarExpanded]);
 
   useEffect(() => {
+    // Check if user is admin on mount and when role changes
+    setUserIsAdmin(isAdmin());
+  }, []);
+
+  useEffect(() => {
     const handleStorageChange = () => {
       const saved = sessionStorage.getItem("isDarkMode");
       setIsDarkMode(saved !== null ? saved === "true" : false);
+      // Also check role changes
+      setUserIsAdmin(isAdmin());
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -49,13 +59,18 @@ export default function Sidebar() {
       if (current !== isDarkMode) {
         setIsDarkMode(current);
       }
+      // Also poll for role changes
+      const currentIsAdmin = isAdmin();
+      if (currentIsAdmin !== userIsAdmin) {
+        setUserIsAdmin(currentIsAdmin);
+      }
     }, 500);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(interval);
     };
-  }, [isDarkMode]);
+  }, [isDarkMode, userIsAdmin]);
 
   const isActive = (path: string) => pathname === path;
 
@@ -66,6 +81,7 @@ export default function Sidebar() {
       clearAppToken();
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("lastPath");
+        sessionStorage.removeItem("userRole");
       }
       router.push("/login");
     } catch (err) {
@@ -163,8 +179,8 @@ export default function Sidebar() {
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
                   : "bg-green-100 border-green-300 hover:bg-green-200"
                 : isDarkMode
-                ? "hover:bg-white/10 border-transparent"
-                : "hover:bg-gray-200 border-transparent"
+                  ? "hover:bg-white/10 border-transparent"
+                  : "hover:bg-gray-200 border-transparent"
             }`}
           >
             <FileText
@@ -174,8 +190,8 @@ export default function Sidebar() {
                     ? "text-green-400"
                     : "text-green-600"
                   : isDarkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
+                    ? "text-gray-400"
+                    : "text-gray-600"
               }`}
             />
             {sidebarExpanded && (
@@ -186,8 +202,8 @@ export default function Sidebar() {
                       ? "text-white"
                       : "text-gray-900"
                     : isDarkMode
-                    ? "text-gray-300"
-                    : "text-gray-700"
+                      ? "text-gray-300"
+                      : "text-gray-700"
                 }`}
               >
                 Dashboard
@@ -208,8 +224,8 @@ export default function Sidebar() {
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
                   : "bg-green-100 border-green-300 hover:bg-green-200"
                 : isDarkMode
-                ? "hover:bg-white/10 border-transparent"
-                : "hover:bg-gray-200 border-transparent"
+                  ? "hover:bg-white/10 border-transparent"
+                  : "hover:bg-gray-200 border-transparent"
             }`}
           >
             <Clipboard
@@ -219,8 +235,8 @@ export default function Sidebar() {
                     ? "text-green-400"
                     : "text-green-600"
                   : isDarkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
+                    ? "text-gray-400"
+                    : "text-gray-600"
               }`}
             />
             {sidebarExpanded && (
@@ -231,8 +247,8 @@ export default function Sidebar() {
                       ? "text-white"
                       : "text-gray-900"
                     : isDarkMode
-                    ? "text-gray-300"
-                    : "text-gray-700"
+                      ? "text-gray-300"
+                      : "text-gray-700"
                 }`}
               >
                 Activity Log
@@ -253,8 +269,8 @@ export default function Sidebar() {
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
                   : "bg-green-100 border-green-300 hover:bg-green-200"
                 : isDarkMode
-                ? "hover:bg-white/10 border-transparent"
-                : "hover:bg-gray-200 border-transparent"
+                  ? "hover:bg-white/10 border-transparent"
+                  : "hover:bg-gray-200 border-transparent"
             }`}
           >
             <TrendingUp
@@ -264,8 +280,8 @@ export default function Sidebar() {
                     ? "text-green-400"
                     : "text-green-600"
                   : isDarkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
+                    ? "text-gray-400"
+                    : "text-gray-600"
               }`}
             />
             {sidebarExpanded && (
@@ -276,8 +292,8 @@ export default function Sidebar() {
                       ? "text-white"
                       : "text-gray-900"
                     : isDarkMode
-                    ? "text-gray-300"
-                    : "text-gray-700"
+                      ? "text-gray-300"
+                      : "text-gray-700"
                 }`}
               >
                 Attendance Comparator
@@ -298,8 +314,8 @@ export default function Sidebar() {
                   ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
                   : "bg-green-100 border-green-300 hover:bg-green-200"
                 : isDarkMode
-                ? "hover:bg-white/10 border-transparent"
-                : "hover:bg-gray-200 border-transparent"
+                  ? "hover:bg-white/10 border-transparent"
+                  : "hover:bg-gray-200 border-transparent"
             }`}
           >
             <FileSpreadsheet
@@ -309,8 +325,8 @@ export default function Sidebar() {
                     ? "text-green-400"
                     : "text-green-600"
                   : isDarkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
+                    ? "text-gray-400"
+                    : "text-gray-600"
               }`}
             />
             {sidebarExpanded && (
@@ -321,14 +337,61 @@ export default function Sidebar() {
                       ? "text-white"
                       : "text-gray-900"
                     : isDarkMode
-                    ? "text-gray-300"
-                    : "text-gray-700"
+                      ? "text-gray-300"
+                      : "text-gray-700"
                 }`}
               >
                 Timesheet Preview
               </span>
             )}
           </button>
+
+          {userIsAdmin && (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("app:navigate"));
+                router.push("/attendance-adjustment");
+              }}
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition group w-full text-left ${
+                sidebarExpanded ? "" : "justify-center"
+              } ${
+                isActive("/attendance-adjustment")
+                  ? isDarkMode
+                    ? "bg-green-500/20 border-green-500/30 hover:bg-green-500/30"
+                    : "bg-green-100 border-green-300 hover:bg-green-200"
+                  : isDarkMode
+                    ? "hover:bg-white/10 border-transparent"
+                    : "hover:bg-gray-200 border-transparent"
+              }`}
+            >
+              <UserCheck
+                className={`w-5 h-5 flex-shrink-0 ${
+                  isActive("/attendance-adjustment")
+                    ? isDarkMode
+                      ? "text-green-400"
+                      : "text-green-600"
+                    : isDarkMode
+                      ? "text-gray-400"
+                      : "text-gray-600"
+                }`}
+              />
+              {sidebarExpanded && (
+                <span
+                  className={`text-sm font-medium whitespace-nowrap ${
+                    isActive("/attendance-adjustment")
+                      ? isDarkMode
+                        ? "text-white"
+                        : "text-gray-900"
+                      : isDarkMode
+                        ? "text-gray-300"
+                        : "text-gray-700"
+                  }`}
+                >
+                  Attendance Adjustment
+                </span>
+              )}
+            </button>
+          )}
         </nav>
 
         {/* Sign Out Button at Bottom */}
