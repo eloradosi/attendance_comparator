@@ -81,6 +81,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
               date: r.date,
               checkin: sanitizeTimeForPreview(r.checkin),
               checkout: sanitizeTimeForPreview(r.checkout),
+              ket: r.ket,
             }));
             setParsedDataA(sanitized);
           } else {
@@ -100,6 +101,7 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
           date: r.date,
           checkin: sanitizeTimeForPreview(r.checkin),
           checkout: sanitizeTimeForPreview(r.checkout),
+          ket: r.ket,
         }));
         setParsedDataB(sanitized);
       }
