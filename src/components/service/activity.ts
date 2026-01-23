@@ -18,6 +18,10 @@ export interface ActivityLog {
 export interface FetchMyActivitiesParams {
   page?: number;
   size?: number;
+  startDate?: string; // Format: YYYY-MM-DD
+  endDate?: string;   // Format: YYYY-MM-DD
+  sortBy?: string;    // e.g., "date"
+  sortDir?: string;   // "asc" or "desc"
   cancelToken?: any;
 }
 
@@ -27,12 +31,24 @@ export interface FetchMyActivitiesParams {
 export async function fetchMyActivities(
   params: FetchMyActivitiesParams = {}
 ): Promise<ActivityLog[]> {
-  const { page = 0, size = 100, cancelToken } = params;
+  const { page = 0, size = 100, startDate, endDate, sortBy, sortDir, cancelToken } = params;
 
   const backend = await getApiUrl();
+
+  // Build query parameters
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    size: size.toString(),
+  });
+
+  if (startDate) queryParams.append('startDate', startDate);
+  if (endDate) queryParams.append('endDate', endDate);
+  if (sortBy) queryParams.append('sortBy', sortBy);
+  if (sortDir) queryParams.append('sortDir', sortDir);
+
   const url = backend
-    ? `${backend.replace(/\/$/, "")}/api/logbook/my?page=${page}&size=${size}`
-    : `/api/logbook/my?page=${page}&size=${size}`;
+    ? `${backend.replace(/\/$/, "")}/api/logbook/my?${queryParams.toString()}`
+    : `/api/logbook/my?${queryParams.toString()}`;
 
   const token = getAppToken();
   const resp = await axios.get(url, {

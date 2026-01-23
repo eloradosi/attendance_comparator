@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
   useEffect(
     () => setPage(0),
-    [statusFilter, userFilter, pageSize, dateRange, todayOnly]
+    [statusFilter, userFilter, pageSize, dateRange, todayOnly],
   );
 
   const totalPages = Math.max(1, Math.ceil(totalData / pageSize));
@@ -159,9 +159,7 @@ export default function DashboardPage() {
       try {
         const authInstance = await getFirebaseAuth();
         unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
-      } catch (error) {
-        console.error("Auth listener setup failed:", error);
-      }
+      } catch (error) {}
     };
 
     setupAuthListener();
@@ -181,7 +179,6 @@ export default function DashboardPage() {
       }
       router.push("/login");
     } catch (err) {
-      console.error("Sign-out failed:", err);
       showToast("Sign out failed", "error");
     }
   };
@@ -251,7 +248,7 @@ export default function DashboardPage() {
     // Use Gmail profile photo directly
     setAvatarUrl(
       user?.photoURL ||
-        "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName)
+        "https://ui-avatars.com/api/?name=" + encodeURIComponent(firstName),
     );
   }, [user, firstName]);
 
@@ -280,14 +277,14 @@ export default function DashboardPage() {
             {
               headers,
               cancelToken: source.token,
-            }
+            },
           ),
           axios.get(
             `${backend.replace(/\/$/, "")}/api/dashboard/logbook-users`,
             {
               headers,
               cancelToken: source.token,
-            }
+            },
           ),
           fetchActivities({
             dateRange,
@@ -314,10 +311,10 @@ export default function DashboardPage() {
                     x.value === "on_duty"
                       ? "bg-amber-300"
                       : x.value === "off_duty"
-                      ? "bg-red-300"
-                      : x.value === "idle"
-                      ? "bg-green-300"
-                      : "bg-gray-300"
+                        ? "bg-red-300"
+                        : x.value === "idle"
+                          ? "bg-green-300"
+                          : "bg-gray-300"
                   }`}
                 />
                 <span>{x.label}</span>
@@ -338,7 +335,6 @@ export default function DashboardPage() {
         setTotalData(activitiesResponse.totalData);
       } catch (err: any) {
         if (axios.isCancel(err)) return;
-        console.error("Error loading dashboard data:", err);
         setActivities([]);
         setTotalData(0);
       } finally {
@@ -375,7 +371,6 @@ export default function DashboardPage() {
 
       showToast("Token copied to clipboard!", "success");
     } catch (err) {
-      console.error("Failed to get token:", err);
       showToast("Failed to get token", "error");
     }
   };
@@ -741,15 +736,15 @@ export default function DashboardPage() {
                                     r.status === "on_duty"
                                       ? "bg-amber-100 text-amber-700"
                                       : r.status === "off_duty"
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-green-100 text-green-700"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-green-100 text-green-700"
                                   }`}
                                 >
                                   {r.status === "on_duty"
                                     ? "On duty"
                                     : r.status === "off_duty"
-                                    ? "Off duty"
-                                    : "Idle"}
+                                      ? "Off duty"
+                                      : "Idle"}
                                 </span>
                               </td>
                               <td
@@ -789,7 +784,7 @@ export default function DashboardPage() {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                         hour12: true,
-                                      }
+                                      },
                                     )
                                   : "-"}
                               </td>
@@ -805,7 +800,7 @@ export default function DashboardPage() {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                         hour12: true,
-                                      }
+                                      },
                                     )
                                   : "-"}
                               </td>
@@ -869,8 +864,8 @@ export default function DashboardPage() {
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
                               : isDarkMode
-                              ? "border-gray-700 hover:bg-white/5"
-                              : "hover:bg-gray-50"
+                                ? "border-gray-700 hover:bg-white/5"
+                                : "hover:bg-gray-50"
                           }`}
                         >
                           <ChevronsLeft className="w-4 h-4" />
@@ -886,8 +881,8 @@ export default function DashboardPage() {
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
                               : isDarkMode
-                              ? "border-gray-700 hover:bg-white/5"
-                              : "hover:bg-gray-50"
+                                ? "border-gray-700 hover:bg-white/5"
+                                : "hover:bg-gray-50"
                           }`}
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -908,8 +903,8 @@ export default function DashboardPage() {
                                 p === page
                                   ? "bg-green-600 text-white border-green-600"
                                   : isDarkMode
-                                  ? "border-gray-700 hover:bg-white/5"
-                                  : "hover:bg-gray-50"
+                                    ? "border-gray-700 hover:bg-white/5"
+                                    : "hover:bg-gray-50"
                               }`}
                             >
                               {p + 1}
@@ -930,8 +925,8 @@ export default function DashboardPage() {
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
                               : isDarkMode
-                              ? "border-gray-700 hover:bg-white/5"
-                              : "hover:bg-gray-50"
+                                ? "border-gray-700 hover:bg-white/5"
+                                : "hover:bg-gray-50"
                           }`}
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -947,8 +942,8 @@ export default function DashboardPage() {
                                 ? "text-gray-600 border-gray-700"
                                 : "text-gray-400 border-gray-200"
                               : isDarkMode
-                              ? "border-gray-700 hover:bg-white/5"
-                              : "hover:bg-gray-50"
+                                ? "border-gray-700 hover:bg-white/5"
+                                : "hover:bg-gray-50"
                           }`}
                         >
                           <ChevronsRight className="w-4 h-4" />

@@ -40,9 +40,7 @@ export default function AuthGuard({ children }: PropsWithChildren) {
         try {
           const authInstance = await getFirebaseAuth();
           await signOut(authInstance);
-        } catch (error) {
-          console.error("Sign out failed:", error);
-        }
+        } catch (error) {}
         clearAppToken();
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("lastPath");
@@ -97,7 +95,6 @@ export default function AuthGuard({ children }: PropsWithChildren) {
           }
         });
       } catch (error) {
-        console.error("Auth listener setup failed:", error);
         setReady(true);
       }
     };

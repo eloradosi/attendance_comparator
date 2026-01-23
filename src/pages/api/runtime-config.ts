@@ -80,7 +80,6 @@ export default function handler(
     const missingVarMatch = errorMessage.match(/Missing required environment variable: (\w+)/);
     const missingVariable = missingVarMatch ? missingVarMatch[1] : undefined;
 
-    console.error("[runtime-config] Configuration validation failed:", errorMessage);
 
     res.status(500).json({
       error: "Runtime Configuration Error",

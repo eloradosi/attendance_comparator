@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { showToast } from "@/components/Toast";
 import ActivityForm from "@/components/activity/ActivityForm";
 import Modal from "@/components/Modal";
+import Dropdown from "@/components/ui/dropdown";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { Edit } from "lucide-react";
 import {
@@ -74,6 +75,56 @@ export default function ActivityList({ onActivityAdded }: Props) {
     return false;
   });
 
+  // Filter state
+  const [selectedMonth, setSelectedMonth] = useState<string>("0");
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+
+  // Initialize with current month/year after mount
+  useEffect(() => {
+    const now = new Date();
+    setSelectedMonth(now.getMonth().toString());
+    setSelectedYear(now.getFullYear());
+  }, []);
+
+  const months = [
+    { value: "0", label: "January" },
+    { value: "1", label: "February" },
+    { value: "2", label: "March" },
+    { value: "3", label: "April" },
+    { value: "4", label: "May" },
+    { value: "5", label: "June" },
+    { value: "6", label: "July" },
+    { value: "7", label: "August" },
+    { value: "8", label: "September" },
+    { value: "9", label: "October" },
+    { value: "10", label: "November" },
+    { value: "11", label: "December" },
+  ];
+
+  // Calculate startDate and endDate based on selected month/year
+  const { startDate, endDate } = useMemo(() => {
+    const month = parseInt(selectedMonth);
+    const year = selectedYear;
+
+    // First day of month
+    const start = new Date(year, month, 1);
+    // Last day of month
+    const end = new Date(year, month + 1, 0);
+
+    // Format as YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    return {
+      startDate: formatDate(start),
+      endDate: formatDate(end),
+    };
+  }, [selectedMonth, selectedYear]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof window === "undefined") return;
@@ -113,6 +164,10 @@ export default function ActivityList({ onActivityAdded }: Props) {
         const mapped = await fetchMyActivities({
           page: 0,
           size: 100,
+          startDate,
+          endDate,
+          sortBy: "date",
+          sortDir: "desc",
           cancelToken: source.token,
         });
 
@@ -129,10 +184,9 @@ export default function ActivityList({ onActivityAdded }: Props) {
       } catch (err: any) {
         if (axios.isCancel(err)) return;
         if (isMounted) {
-          console.error("Failed to load activity logs from backend", err);
           showToast(
             err.response?.data?.message || "Failed to load activity logs",
-            "error"
+            "error",
           );
           setLogs([]);
         }
@@ -143,7 +197,7 @@ export default function ActivityList({ onActivityAdded }: Props) {
       isMounted = false;
       source.cancel();
     };
-  }, [uid]);
+  }, [uid, startDate, endDate]);
 
   const refresh = () => {
     if (!uid) return;
@@ -163,10 +217,9 @@ export default function ActivityList({ onActivityAdded }: Props) {
           onActivityAdded();
         }
       } catch (err: any) {
-        console.error("Failed to refresh from backend", err);
         showToast(
           err.response?.data?.message || "Failed to refresh activity logs",
-          "error"
+          "error",
         );
         setLogs([]);
       }
@@ -189,10 +242,9 @@ export default function ActivityList({ onActivityAdded }: Props) {
       showToast("Activity added", "success");
       return;
     } catch (err: any) {
-      console.error("Error adding activity:", err);
       showToast(
         err.response?.data?.message || "Failed to add activity",
-        "error"
+        "error",
       );
       setAdding(false);
     }
@@ -208,10 +260,9 @@ export default function ActivityList({ onActivityAdded }: Props) {
       showToast("Activity updated", "success");
       return;
     } catch (err: any) {
-      console.error("Error updating activity:", err);
       showToast(
         err.response?.data?.message || "Failed to update activity",
-        "error"
+        "error",
       );
       setEditingId(null);
     }
@@ -230,10 +281,9 @@ export default function ActivityList({ onActivityAdded }: Props) {
       refresh();
       showToast("Activity deleted", "success");
     } catch (err: any) {
-      console.error("Error deleting activity:", err);
       showToast(
         err.response?.data?.message || "Failed to delete activity",
-        "error"
+        "error",
       );
       setToDelete(null);
     }
@@ -259,6 +309,48 @@ export default function ActivityList({ onActivityAdded }: Props) {
               Add Activity
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Filter Section */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="w-full sm:w-48">
+          <label
+            className={`block text-sm font-medium mb-2 ${
+              isDarkMode ? "text-gray-300" : "text-gray-700"
+            }`}
+          >
+            Month
+          </label>
+          <Dropdown
+            options={months}
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            width="w-full"
+            placeholder="Select Month"
+          />
+        </div>
+        <div className="w-full sm:w-32">
+          <label
+            className={`block text-sm font-medium mb-2 ${
+              isDarkMode ? "text-gray-300" : "text-gray-700"
+            }`}
+          >
+            Year
+          </label>
+          <Dropdown
+            options={Array.from({ length: 5 }, (_, i) => {
+              const year = new Date().getFullYear() - 2 + i;
+              return {
+                value: year.toString(),
+                label: year.toString(),
+              };
+            })}
+            value={selectedYear.toString()}
+            onChange={(value) => setSelectedYear(parseInt(value))}
+            width="w-full"
+            placeholder="Select Year"
+          />
         </div>
       </div>
 
@@ -330,15 +422,15 @@ export default function ActivityList({ onActivityAdded }: Props) {
                           l.status === "on_duty"
                             ? "bg-amber-100 text-amber-700"
                             : l.status === "off_duty"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-green-100 text-green-700"
                         }`}
                       >
                         {l.status === "on_duty"
                           ? "On duty"
                           : l.status === "off_duty"
-                          ? "Off duty"
-                          : "Idle"}
+                            ? "Off duty"
+                            : "Idle"}
                       </div>
                     </div>
 

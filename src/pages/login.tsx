@@ -48,7 +48,6 @@ export default function LoginPage() {
         // Not logged in, allow rendering
         setShouldRender(true);
       } catch (error) {
-        console.error("Auth check failed:", error);
         setShouldRender(true);
       }
     };
@@ -67,7 +66,6 @@ export default function LoginPage() {
         });
         return unsub;
       } catch (error) {
-        console.error("Auth listener setup failed:", error);
         return () => {};
       }
     };
@@ -125,7 +123,6 @@ export default function LoginPage() {
         }
 
         const data = await response.json();
-        console.log("✅ Login response:", data);
 
         // Store backend session token
         if (data?.token) {
@@ -134,7 +131,6 @@ export default function LoginPage() {
         // Store user role for access control
         if (data?.role) {
           sessionStorage.setItem("userRole", data.role);
-          console.log("✅ User role saved:", data.role);
         } else {
           console.warn("⚠️ No role in response");
         }
@@ -146,14 +142,12 @@ export default function LoginPage() {
         // Use router.push for smooth navigation
         router.push("/dashboard");
       } catch (backendErr) {
-        console.error("Error calling backend login:", backendErr);
         // Sign out from Firebase to prevent auto-redirect
         await authInstance.signOut();
         showToast("Backend unreachable - check API_URL configuration", "error");
         return; // Block login on network/config error
       }
     } catch (err: any) {
-      console.error("Sign-in error:", err);
       showToast(err.message || "Sign in failed", "error");
     } finally {
       setIsLoading(false);

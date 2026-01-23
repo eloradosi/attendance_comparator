@@ -112,7 +112,7 @@ export default function AllActivitiesPage() {
   // Reset page when filters change
   useEffect(
     () => setPage(0),
-    [statusFilter, userFilter, pageSize, dateRange, todayOnly]
+    [statusFilter, userFilter, pageSize, dateRange, todayOnly],
   );
 
   const totalPages = Math.max(1, Math.ceil(totalData / pageSize));
@@ -143,7 +143,6 @@ export default function AllActivitiesPage() {
         if (axios.isCancel(err)) {
           return;
         }
-        console.error("Error fetching dashboard logbook list:", err);
         setRows([]);
         setTotalData(0);
       } finally {
@@ -173,7 +172,7 @@ export default function AllActivitiesPage() {
           {
             headers,
             cancelToken: source.token,
-          }
+          },
         );
         const data = Array.isArray(res.data) ? res.data : [];
         const opts = [
@@ -187,10 +186,10 @@ export default function AllActivitiesPage() {
                     x.value === "on_duty"
                       ? "bg-amber-300"
                       : x.value === "off_duty"
-                      ? "bg-red-300"
-                      : x.value === "idle"
-                      ? "bg-green-300"
-                      : "bg-gray-300"
+                        ? "bg-red-300"
+                        : x.value === "idle"
+                          ? "bg-green-300"
+                          : "bg-gray-300"
                   }`}
                 />
                 <span>{x.label}</span>
@@ -201,7 +200,6 @@ export default function AllActivitiesPage() {
         setStatusOptions(opts);
       } catch (err: any) {
         if (axios.isCancel(err)) return;
-        console.error("Error fetching status LOV:", err);
       }
     };
 
@@ -215,7 +213,7 @@ export default function AllActivitiesPage() {
           {
             headers,
             cancelToken: source.token,
-          }
+          },
         );
         const data = Array.isArray(res.data) ? res.data : [];
         const opts = [
@@ -225,7 +223,6 @@ export default function AllActivitiesPage() {
         setUserOptions(opts);
       } catch (err: any) {
         if (axios.isCancel(err)) return;
-        console.error("Error fetching user LOV:", err);
       }
     };
 
@@ -383,15 +380,15 @@ export default function AllActivitiesPage() {
                                   r.status === "on_duty"
                                     ? "bg-amber-100 text-amber-700"
                                     : r.status === "off_duty"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-green-100 text-green-700"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-green-100 text-green-700"
                                 }`}
                               >
                                 {r.status === "on_duty"
                                   ? "On duty"
                                   : r.status === "off_duty"
-                                  ? "Off duty"
-                                  : "Idle"}
+                                    ? "Off duty"
+                                    : "Idle"}
                               </span>
                             </td>
                             <td className="py-2 px-3 align-top text-sm text-gray-800">
@@ -414,7 +411,7 @@ export default function AllActivitiesPage() {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                       hour12: true,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -426,7 +423,7 @@ export default function AllActivitiesPage() {
                                       hour: "2-digit",
                                       minute: "2-digit",
                                       hour12: true,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>

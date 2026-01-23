@@ -89,7 +89,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
             setParsedDataA(null);
           }
         } catch (err) {
-          console.error("❌ Failed to parse IHCS rows:", err);
           setParsedDataA(null);
         }
       } else {
@@ -105,7 +104,6 @@ export default function FileUpload({ onSubmit }: FileUploadProps) {
         setParsedDataB(sanitized);
       }
     } catch (err) {
-      console.error("❌ Failed to parse PDF:", err);
       alert("Failed to parse PDF. The file will be uploaded as-is.");
       if (which === "A") {
         setEmployeeId(null);

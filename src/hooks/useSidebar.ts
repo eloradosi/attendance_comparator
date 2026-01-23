@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 
 export function useSidebar() {
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('sidebarExpanded');
-      return saved === 'true';
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  useEffect(() => {
+    // Initialize from sessionStorage on mount
+    const saved = sessionStorage.getItem('sidebarExpanded');
+    if (saved !== null) {
+      setSidebarExpanded(saved === 'true');
     }
-    return false;
-  });
+  }, []);
 
   useEffect(() => {
     // Listen for changes in sessionStorage from other components

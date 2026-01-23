@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { Calendar, Save, RotateCcw } from "lucide-react";
+import { Calendar, Save, RotateCcw, RefreshCw } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import Sidebar from "@/components/Sidebar";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -52,13 +52,10 @@ export default function AttendanceAdjustmentPage() {
 
       if (response.data && Array.isArray(response.data)) {
         setEmployeeRecords(response.data);
-        console.log("✅ TK Records loaded:", response.data.length, "employees");
       } else {
-        console.error("❌ Invalid response format");
         setEmployeeRecords([]);
       }
     } catch (error: any) {
-      console.error("❌ Error fetching TK records:", error);
       setEmployeeRecords([]);
       alert(`Failed to load TK records: ${error.message || "Unknown error"}`);
     } finally {
@@ -87,7 +84,7 @@ export default function AttendanceAdjustmentPage() {
       }));
 
     if (employeeAdjustments.length === 0) {
-      showToast("Tidak ada perubahan status untuk karyawan ini", "info");
+      showToast("No status changes for this employee", "info");
       return;
     }
 
@@ -98,13 +95,13 @@ export default function AttendanceAdjustmentPage() {
       const employee = employeeRecords.find((e) => e.employeeId === employeeId);
 
       if (!employee) {
-        showToast("Data karyawan tidak ditemukan", "error");
+        showToast("Employee data not found", "error");
         return;
       }
 
       await adjustTKStatus({ id: employee.id, ihcsData: employeeAdjustments });
       showToast(
-        `Adjustment berhasil disimpan untuk ${employee.employeeName}`,
+        `Adjustment saved successfully for ${employee.employeeName}`,
         "success",
       );
 
@@ -119,8 +116,7 @@ export default function AttendanceAdjustmentPage() {
 
       fetchTKRecords();
     } catch (error) {
-      console.error("Error saving adjustments:", error);
-      showToast("Gagal menyimpan perubahan status", "error");
+      showToast("Failed to save status changes", "error");
     } finally {
       setIsLoading(false);
     }
@@ -166,14 +162,22 @@ export default function AttendanceAdjustmentPage() {
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Kelola Status Kehadiran TK
+                    Manage TK Attendance Status
                   </h2>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Adjust status kehadiran TK menjadi cuti atau sakit
+                    Adjust TK attendance status to leave or sick
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={fetchTKRecords}
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    disabled={isLoading}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </button>
                   <button
                     onClick={handleReset}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -191,7 +195,7 @@ export default function AttendanceAdjustmentPage() {
                   <div className="text-center">
                     <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
                     <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                      Memuat data...
+                      Loading data...
                     </p>
                   </div>
                 </div>
@@ -199,10 +203,10 @@ export default function AttendanceAdjustmentPage() {
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center">
                   <Calendar className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                    Tidak ada data TK
+                    No TK Data Available
                   </h3>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Tidak ada karyawan dengan status TK saat ini
+                    No employees with TK status at this time
                   </p>
                 </div>
               ) : (
@@ -223,7 +227,7 @@ export default function AttendanceAdjustmentPage() {
                           </p>
                         </div>
                         <div className="rounded-full bg-orange-100 dark:bg-orange-900/30 px-3 py-1 text-sm font-medium text-orange-700 dark:text-orange-300">
-                          {employee.ihcsData.length} hari TK
+                          {employee.ihcsData.length} days TK
                         </div>
                       </div>
 
@@ -232,16 +236,16 @@ export default function AttendanceAdjustmentPage() {
                           <thead>
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Tanggal
+                                Date
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Status Asli
+                                Original Status
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Adjust Status
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Status Akhir
+                                Final Status
                               </th>
                             </tr>
                           </thead>
@@ -302,16 +306,30 @@ export default function AttendanceAdjustmentPage() {
                                       >
                                         Sakit
                                       </button>
+                                      <button
+                                        onClick={() =>
+                                          handleStatusChange(key, "HADIR")
+                                        }
+                                        className={`px-4 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${
+                                          currentSelection === "HADIR"
+                                            ? "bg-green-600 text-white shadow-sm"
+                                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+                                        }`}
+                                      >
+                                        Hadir
+                                      </button>
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-sm">
                                     <span
                                       className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                        finalStatus === "CUTI"
-                                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                          : finalStatus === "SAKIT"
-                                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                                            : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                                        finalStatus === "HADIR"
+                                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                                          : finalStatus === "CUTI"
+                                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                            : finalStatus === "SAKIT"
+                                              ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                              : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
                                       }`}
                                     >
                                       {finalStatus}
@@ -339,7 +357,7 @@ export default function AttendanceAdjustmentPage() {
                           }
                         >
                           <Save className="h-4 w-4" />
-                          Simpan Adjustment
+                          Save Adjustment
                         </button>
                       </div>
                     </div>

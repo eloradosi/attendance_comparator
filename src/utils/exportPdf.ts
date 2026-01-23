@@ -82,9 +82,8 @@ export async function exportTimesheetPdfWithWatermark(
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     } catch (err) {
-        console.error("Failed to add watermark to PDF:", err);
         alert(
-            "Failed to add watermark to PDF. Please try again or check console for details."
+            "Failed to add watermark to PDF. Please try again."
         );
         return;
     }

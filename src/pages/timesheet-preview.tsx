@@ -18,24 +18,30 @@ export default function TimesheetPreviewPage() {
   const [user, setUser] = useState<User | null>(null);
   const sidebarExpanded = useSidebar();
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Form states - Upload Card
-  const [uploadMonth, setUploadMonth] = useState<string>(
-    new Date().getMonth().toString(),
-  );
-  const [uploadYear, setUploadYear] = useState<number>(
-    new Date().getFullYear(),
-  );
+  // Form states - Upload Card - use static defaults
+  const [uploadMonth, setUploadMonth] = useState<string>("0");
+  const [uploadYear, setUploadYear] = useState<number>(2026);
   const [ihcsFile, setIhcsFile] = useState<File | null>(null);
 
-  // Form states - Download Card
+  // Form states - Download Card - use static defaults
   const [downloadVendor, setDownloadVendor] = useState<string>("MII");
-  const [downloadMonth, setDownloadMonth] = useState<string>(
-    new Date().getMonth().toString(),
-  );
-  const [downloadYear, setDownloadYear] = useState<number>(
-    new Date().getFullYear(),
-  );
+  const [downloadMonth, setDownloadMonth] = useState<string>("0");
+  const [downloadYear, setDownloadYear] = useState<number>(2026);
+
+  // Initialize with current date after component mounts
+  useEffect(() => {
+    setMounted(true);
+    const now = new Date();
+    const currentMonth = now.getMonth().toString();
+    const currentYear = now.getFullYear();
+
+    setUploadMonth(currentMonth);
+    setUploadYear(currentYear);
+    setDownloadMonth(currentMonth);
+    setDownloadYear(currentYear);
+  }, []);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -82,17 +88,14 @@ export default function TimesheetPreviewPage() {
       setIsLoading(true);
 
       // Parse IHCS file
-      console.log("📄 Parsing IHCS file for upload:", ihcsFile.name);
 
       // Extract employee metadata
       const meta = await parseIHcsPdf(ihcsFile);
-      console.log("👤 Employee metadata:", meta);
 
       // Parse attendance rows from IHCS
       const ihcsData = await parsePdf(ihcsFile, {
         vendor: "MII",
       });
-      console.log("📊 Parsed IHCS data:", ihcsData);
 
       // Format data untuk backend
       const ihcsDataFormatted = ihcsData.map((row) => ({
@@ -109,19 +112,22 @@ export default function TimesheetPreviewPage() {
       const response = await uploadAttendance({
         employeeId: meta.employeeId || "",
         employeeName: meta.employeeName || "",
-        vendor: "MII",
         period,
         ihcsData: ihcsDataFormatted,
       });
-
-      console.log("✅ Upload completed:", response);
 
       showToast(
         `Upload berhasil! Data ${response.data.employeeName} (${response.data.totalRecords} records, ${response.data.tkRecords} TK) telah tersimpan`,
         "success",
       );
+
+      // Reset file input after successful upload
+      setIhcsFile(null);
+      const fileInput = document.getElementById("ihcsFile") as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = "";
+      }
     } catch (err: any) {
-      console.error("❌ Upload failed:", err);
       showToast(err.message || "Failed to upload IHCS data", "error");
     } finally {
       setIsLoading(false);
@@ -135,37 +141,33 @@ export default function TimesheetPreviewPage() {
       // Create period string (YYYY-MM)
       const period = `${downloadYear}-${String(parseInt(downloadMonth) + 1).padStart(2, "0")}`;
 
-      console.log("🔄 Requesting Excel for:", {
-        vendor: downloadVendor,
-        period,
-      });
-
       // Call API to get filled Excel file
       const response = await timesheetExcel({
         vendor: downloadVendor,
         period,
-        ihcsData: [],
       });
 
-      console.log("✅ API Response - Excel file received");
-
-      // Format periode: "Januari 2026"
-      const monthNames = [
-        "Januari",
-        "Februari",
-        "Maret",
-        "April",
-        "Mei",
-        "Juni",
-        "Juli",
-        "Agustus",
-        "September",
-        "Oktober",
-        "November",
-        "Desember",
-      ];
-      const periodFormatted = `${monthNames[parseInt(downloadMonth)]}_${downloadYear}`;
-      const filename = `${downloadVendor}_Timesheet_${periodFormatted}.xlsx`;
+      // Use filename from backend or fallback to default
+      let filename = response.filename;
+      if (!filename) {
+        // Fallback: Format periode: "Januari 2026"
+        const monthNames = [
+          "Januari",
+          "Februari",
+          "Maret",
+          "April",
+          "Mei",
+          "Juni",
+          "Juli",
+          "Agustus",
+          "September",
+          "Oktober",
+          "November",
+          "Desember",
+        ];
+        const periodFormatted = `${monthNames[parseInt(downloadMonth)]}_${downloadYear}`;
+        filename = `${downloadVendor}_Timesheet_${periodFormatted}.xlsx`;
+      }
 
       // Create download URL and trigger download
       const url = URL.createObjectURL(response.excelFile);
@@ -177,7 +179,6 @@ export default function TimesheetPreviewPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      console.log("✅ Download completed");
       showToast("Excel file downloaded successfully", "success");
     } catch (err: any) {
       showToast(
@@ -345,7 +346,7 @@ export default function TimesheetPreviewPage() {
 
                   <div className="space-y-4">
                     {/* Vendor Selection */}
-                    <div className="relative z-20">
+                    <div className="relative z-30">
                       <label className="block text-sm font-medium mb-2 text-gray-700">
                         Vendor
                       </label>

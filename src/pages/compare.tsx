@@ -48,10 +48,6 @@ export default function ComparePage() {
           }
         }
       } catch (err) {
-        console.error(
-          "Failed to parse comparisonResult from sessionStorage",
-          err,
-        );
         // clear and allow user to upload again
         sessionStorage.removeItem("comparisonResult");
       }
@@ -82,7 +78,6 @@ export default function ComparePage() {
       sessionStorage.setItem("comparisonResult", JSON.stringify(dataResp));
       setData(dataResp);
     } catch (err) {
-      console.error("Error during compare:", err);
       // Stop loading on error
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("app:loading:stop"));

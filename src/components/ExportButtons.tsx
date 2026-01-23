@@ -50,20 +50,19 @@ export default function ExportButtons({
                     // exporter reads stored PDF if provided; pass rows or an empty array
                     timesheetRows || [],
                     summary,
-                    "PASSED"
+                    "PASSED",
                   );
                 } else if (mod?.default) {
                   // support default export
                   await mod.default(timesheetRows || [], summary, "PASSED");
                 } else {
                   alert(
-                    "PDF export module did not export the expected function."
+                    "PDF export module did not export the expected function.",
                   );
                 }
               } catch (err) {
-                console.error("Failed to load PDF exporter:", err);
                 alert(
-                  "PDF export is unavailable. To enable it, run: npm install jspdf jspdf-autotable"
+                  "PDF export is unavailable. To enable it, run: npm install jspdf jspdf-autotable",
                 );
               }
             }}

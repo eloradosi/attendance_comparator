@@ -12,7 +12,7 @@ export interface TimesheetPreviewParams {
     period: string;
     employeeId?: string;
     employeeName?: string;
-    ihcsData: {
+    ihcsData?: {
         date: string;
         checkin: string | null;
         checkout: string | null;
@@ -25,12 +25,12 @@ export interface TimesheetExcelResponse {
     vendor: string;
     period: string;
     excelFile: Blob;
+    filename?: string;
 }
 
 export interface UploadAttendanceParams {
     employeeId: string;
     employeeName: string;
-    vendor: string;
     period: string;
     ihcsData: {
         date: string;
@@ -98,15 +98,12 @@ export async function adjustTKStatus(
     const baseUrl = apiUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/api/attendance/tk/update`;
 
-    console.log("🌐 API URL:", url);
-    console.log("📤 Adjust payload:", JSON.stringify(params, null, 2));
 
     const response = await apiFetch(url, {
         method: "POST",
         body: JSON.stringify(params),
     });
 
-    console.log("📥 Response status:", response.status);
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -115,7 +112,6 @@ export async function adjustTKStatus(
 
     // Backend returns plain text
     const textResult = await response.text();
-    console.log("✅ Adjust response:", textResult);
 
     return {
         success: true,
@@ -132,13 +128,11 @@ export async function getTKRecords(): Promise<GetTKRecordsResponse> {
     const baseUrl = apiUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/api/attendance/tk`;
 
-    console.log("🌐 API URL:", url);
 
     const response = await apiFetch(url, {
         method: "GET",
     });
 
-    console.log("📥 Response status:", response.status);
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -148,7 +142,6 @@ export async function getTKRecords(): Promise<GetTKRecordsResponse> {
     }
 
     const result = await response.json();
-    console.log("✅ TK records fetched:", result);
 
     return result;
 }
@@ -165,24 +158,32 @@ export async function uploadAttendance(
     const baseUrl = apiUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/api/attendance/upload`;
 
-    console.log("🌐 API URL:", url);
-    console.log("📤 Upload payload:", JSON.stringify(params, null, 2));
 
     const response = await apiFetch(url, {
         method: "POST",
         body: JSON.stringify(params),
     });
 
-    console.log("📥 Response status:", response.status);
 
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || `Failed to upload attendance data: ${response.statusText}`);
+        try {
+            // Try to parse as JSON and extract message field only
+            const errorJson = JSON.parse(errorText);
+            const errorMessage = errorJson.message || errorJson.error || errorText;
+            throw new Error(errorMessage);
+        } catch (parseError) {
+            // If JSON.parse fails, check if parseError is our own thrown Error
+            if (parseError instanceof Error && parseError.message !== errorText) {
+                throw parseError; // Re-throw our custom error
+            }
+            // If JSON parsing failed, use text directly
+            throw new Error(errorText || `Failed to upload attendance data: ${response.statusText}`);
+        }
     }
 
     // Backend returns plain text "Attendance added successfully"
     const textResult = await response.text();
-    console.log("✅ Upload response:", textResult);
 
     // Create response object from text
     const result: UploadAttendanceResponse = {
@@ -213,17 +214,14 @@ export async function timesheetExcel(
 ): Promise<TimesheetExcelResponse> {
     const apiUrl = await getApiUrl();
     const baseUrl = apiUrl.replace(/\/+$/, "");
-    const url = `${baseUrl}/api/logbook/export`;
+    const url = `${baseUrl}/api/attendance/export`;
 
-    console.log("🌐 API URL:", url);
-    console.log("📤 Request payload:", JSON.stringify(params, null, 2));
 
     const response = await apiFetch(url, {
         method: "POST",
         body: JSON.stringify(params),
     });
 
-    console.log("📥 Response status:", response.status);
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -233,11 +231,21 @@ export async function timesheetExcel(
     }
 
     const blob = await response.blob();
-    console.log("📥 Excel file size:", blob.size, "bytes");
+
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename: string | undefined;
+    if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=(['"]?)([^'"\n]*?)\1(?:;|$)/i);
+        if (filenameMatch && filenameMatch[2]) {
+            filename = filenameMatch[2];
+        }
+    }
 
     return {
         vendor: params.vendor,
         period: params.period,
         excelFile: blob,
+        filename,
     };
 }

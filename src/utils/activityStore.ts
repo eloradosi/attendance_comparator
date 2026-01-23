@@ -30,7 +30,6 @@ export function loadActivityLogs(uid: string): ActivityLog[] {
             return copy as ActivityLog;
         });
     } catch (err) {
-        console.error("Failed to load activity logs", err);
         return [];
     }
 }
@@ -39,7 +38,6 @@ export function saveActivityLogs(uid: string, logs: ActivityLog[]) {
     try {
         localStorage.setItem(keyFor(uid), JSON.stringify(logs));
     } catch (err) {
-        console.error("Failed to save activity logs", err);
     }
 }
 

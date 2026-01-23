@@ -16,23 +16,25 @@ import { isAdmin } from "@/lib/userRoles";
 
 export default function Sidebar() {
   const router = useRouter();
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("sidebarExpanded");
-      return saved === "true";
-    }
-    return false;
-  });
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("isDarkMode");
-      return saved !== null ? saved === "true" : false;
-    }
-    return false;
-  });
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [userIsAdmin, setUserIsAdmin] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = router.pathname;
+
+  // Initialize from sessionStorage after mount
+  useEffect(() => {
+    setMounted(true);
+    const savedSidebar = sessionStorage.getItem("sidebarExpanded");
+    if (savedSidebar !== null) {
+      setSidebarExpanded(savedSidebar === "true");
+    }
+    const savedDarkMode = sessionStorage.getItem("isDarkMode");
+    if (savedDarkMode !== null) {
+      setIsDarkMode(savedDarkMode === "true");
+    }
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem("sidebarExpanded", String(sidebarExpanded));
@@ -84,9 +86,7 @@ export default function Sidebar() {
         sessionStorage.removeItem("userRole");
       }
       router.push("/login");
-    } catch (err) {
-      console.error("Sign-out failed:", err);
-    }
+    } catch (err) {}
   };
 
   return (
@@ -256,7 +256,7 @@ export default function Sidebar() {
             )}
           </button>
 
-          <button
+          {/* <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent("app:navigate"));
               router.push("/compare");
@@ -299,7 +299,7 @@ export default function Sidebar() {
                 Attendance Comparator
               </span>
             )}
-          </button>
+          </button> */}
 
           <button
             onClick={() => {

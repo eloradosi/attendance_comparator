@@ -31,9 +31,7 @@ export default function GoogleAuth({
       try {
         const authInstance = await getFirebaseAuth();
         unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
-      } catch (error) {
-        console.error("Auth listener setup failed:", error);
-      }
+      } catch (error) {}
     };
 
     setupAuthListener();
@@ -75,7 +73,6 @@ export default function GoogleAuth({
           showToast("Backend login failed", "error");
         } else {
           const data = await resp.json();
-          console.log("✅ Login response:", data);
 
           // Store token in sessionStorage (persists on reload, cleared when tab closes)
           if (data?.token) {
@@ -84,14 +81,12 @@ export default function GoogleAuth({
           // Store user role for access control
           if (data?.role) {
             sessionStorage.setItem("userRole", data.role);
-            console.log("✅ User role saved:", data.role);
           } else {
             console.warn("⚠️ No role in response");
           }
           showToast("Signed in", "success");
         }
       } catch (backendErr) {
-        console.error("Error calling backend login:", backendErr);
         showToast("Backend login error", "error");
       }
 
@@ -126,7 +121,6 @@ export default function GoogleAuth({
           const authInstance = await getFirebaseAuth();
           await signInWithRedirect(authInstance, provider);
         } catch (rErr) {
-          console.error("Redirect sign-in also failed:", rErr);
           alert(
             "Google sign-in failed. Please disable popup blockers or try another browser.",
           );
@@ -134,9 +128,8 @@ export default function GoogleAuth({
         return;
       }
 
-      // Fallback for other errors: show console and a friendly message
-      console.error("Google sign-in failed:", err);
-      alert("Google sign-in failed, see console for details.");
+      // Fallback for other errors: show a friendly message
+      alert("Google sign-in failed. Please try again.");
     }
   };
 
@@ -153,9 +146,7 @@ export default function GoogleAuth({
       router.push("/dashboard");
       // TODO: Call backend logout endpoint if needed
       // await apiFetch('/api/auth/logout', { method: 'POST' });
-    } catch (err) {
-      console.error("Sign-out failed:", err);
-    }
+    } catch (err) {}
   };
 
   const handleLogIdToken = async () => {
@@ -165,7 +156,6 @@ export default function GoogleAuth({
       await navigator.clipboard.writeText(token);
       showToast("ID token copied to clipboard", "success");
     } catch (err) {
-      console.error("Failed to get ID token:", err);
       showToast("Failed to retrieve ID token", "error");
     }
   };
