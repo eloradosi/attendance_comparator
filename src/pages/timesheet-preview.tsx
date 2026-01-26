@@ -102,6 +102,7 @@ export default function TimesheetPreviewPage() {
         date: row.date,
         checkin: row.checkin,
         checkout: row.checkout,
+        totalWorkingHour: row.totalWorkingHour,
         ket: row.ket,
       }));
 

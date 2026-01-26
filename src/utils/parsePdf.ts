@@ -20,6 +20,7 @@ export interface ParsedTimesheetRow {
     date: string;
     checkin: string | null;
     checkout: string | null;
+    totalWorkingHour: string | null;
     ket: string | null;
 }
 
@@ -104,6 +105,7 @@ async function parsePdfInternal(
         let dateColumnX: number | null = null;
         let checkinColumnX: number | null = null;
         let checkoutColumnX: number | null = null;
+        let totalWorkingHourColumnX: number | null = null;
         let ketColumnX: number | null = null;
 
         // SETTING: Tolerance untuk matching posisi X (dalam pixel)
@@ -159,6 +161,13 @@ async function parsePdfInternal(
                             checkoutColumnX = cell.x;
                         }
 
+                        // Deteksi kolom TOTAL JAM KERJA / WORK TIME
+                        if ((cellLower.includes("total") && cellLower.includes("jam")) ||
+                            cellLower.includes("work time") ||
+                            (cellLower.includes("jam") && cellLower.includes("kerja"))) {
+                            totalWorkingHourColumnX = cell.x;
+                        }
+
                         // Deteksi kolom KET/KETERANGAN
                         if (opts.ketLabels.some(label => cellLower.includes(label))) {
                             ketColumnX = cell.x;
@@ -174,6 +183,7 @@ async function parsePdfInternal(
             let dateStr: string | null = null;
             let checkinStr: string | null = null;
             let checkoutStr: string | null = null;
+            let totalWorkingHourStr: string | null = null;
             let ketStr: string | null = null;
 
             // METHOD 1: Use column positions if detected
@@ -233,6 +243,14 @@ async function parsePdfInternal(
                         }
                     }
 
+                    // Total Working Hour column (decimal values like 8.19, 8.6)
+                    if (totalWorkingHourColumnX !== null && Math.abs(cell.x - totalWorkingHourColumnX) <= xTolerance) {
+                        // Match decimal numbers like 8.19, 8.6, or integers like 8
+                        if (text.match(/^\d+(\.\d+)?$/) && text.trim() !== "-" && text.trim().length > 0) {
+                            totalWorkingHourStr = text.trim();
+                        }
+                    }
+
                     // Ket/Keterangan column
                     if (ketColumnX !== null && Math.abs(cell.x - ketColumnX) <= xTolerance) {
                         if (text.trim() !== "-" && text.trim().length > 0) {
@@ -284,6 +302,7 @@ async function parsePdfInternal(
                         date: normalized,
                         checkin: checkinStr ? normalizeTime(checkinStr) : null,
                         checkout: checkoutStr ? normalizeTime(checkoutStr) : null,
+                        totalWorkingHour: totalWorkingHourStr,
                         ket: ketStr,
                     });
                 }
