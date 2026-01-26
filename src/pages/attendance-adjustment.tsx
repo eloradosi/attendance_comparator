@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
 import ToastContainer from "@/components/Toast";
+import UserProfileAvatar from "@/components/UserProfileAvatar";
 import { useSidebar } from "@/hooks/useSidebar";
 import {
   getTKRecords,
@@ -16,9 +17,12 @@ import {
 } from "@/components/service";
 import { isAdmin } from "@/lib/userRoles";
 import { showToast } from "@/components/Toast";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
+import { onAuthStateChanged, type User } from "firebase/auth";
 
 export default function AttendanceAdjustmentPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [employeeRecords, setEmployeeRecords] = useState<TKEmployeeRecord[]>(
     [],
   );
@@ -27,6 +31,18 @@ export default function AttendanceAdjustmentPage() {
   const [selectedStatus, setSelectedStatus] = useState<{
     [key: string]: string;
   }>({});
+
+  // Auth state
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const authInstance = await getFirebaseAuth();
+      unsub = onAuthStateChanged(authInstance, (u) => setUser(u));
+    })();
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
 
   // Check if user is admin, redirect if not
   useEffect(() => {
@@ -154,6 +170,9 @@ export default function AttendanceAdjustmentPage() {
                       ]}
                     />
                   </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <UserProfileAvatar user={user} />
                 </div>
               </div>
 

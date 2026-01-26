@@ -6,6 +6,7 @@ import ActivityList from "@/components/activity/ActivityList";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
 import ToastContainer from "@/components/Toast";
+import UserProfileAvatar from "@/components/UserProfileAvatar";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -92,6 +93,9 @@ export default function ActivityPage() {
                     ]}
                   />
                 </div>
+              </div>
+              <div className="flex-shrink-0">
+                <UserProfileAvatar user={user} isDarkMode={isDarkMode} />
               </div>
             </div>
 

@@ -6,6 +6,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import BackHeader from "@/components/BackHeader";
 import ToastContainer, { showToast } from "@/components/Toast";
 import Dropdown from "@/components/ui/dropdown";
+import UserProfileAvatar from "@/components/UserProfileAvatar";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -220,6 +221,9 @@ export default function TimesheetPreviewPage() {
                       ]}
                     />
                   </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <UserProfileAvatar user={user} />
                 </div>
               </div>
 
