@@ -206,6 +206,10 @@ export default function ActivityList({ onActivityAdded }: Props) {
         const mapped = await fetchMyActivities({
           page: 0,
           size: 100,
+          startDate,
+          endDate,
+          sortBy: "date",
+          sortDir: "desc",
         });
 
         setLogs(mapped);
