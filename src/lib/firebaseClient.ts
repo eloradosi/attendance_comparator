@@ -1,6 +1,6 @@
 // Client-side Firebase initialization using runtime config
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, setPersistence, browserSessionPersistence, type Auth } from "firebase/auth";
 import { getFirebaseConfig } from "./runtimeConfig";
 
 let app: FirebaseApp | null = null;
@@ -34,6 +34,10 @@ async function initializeFirebase(): Promise<void> {
 
       // Initialize Auth
       auth = getAuth(app);
+
+      // Set persistence to SESSION (cleared when tab is closed)
+      // This prevents automatic login when user reopens the app
+      await setPersistence(auth, browserSessionPersistence);
 
       initPromise = null;
     } catch (error) {
