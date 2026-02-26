@@ -480,10 +480,10 @@ function normalizeDateString(dateStr: string): string | null {
         aug: "08", august: "08",
         sep: "09", sept: "09",
         oct: "10", october: "10",
-        nov: "11",
+        nov: "11", november: "11",
         dec: "12", december: "12",
         // Indonesian variants
-        januari: "01", maret: "03", mei: "05", juni: "06", juli: "07", agustus: "08", september: "09", oktober: "10", november: "11", desember: "12",
+        januari: "01", februari: "02", maret: "03", mei: "05", juni: "06", juli: "07", agustus: "08", september: "09", oktober: "10", desember: "12",
         agst: "08", okt: "10", des: "12",
 
     };
